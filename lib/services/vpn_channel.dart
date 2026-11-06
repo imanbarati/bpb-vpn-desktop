@@ -122,12 +122,16 @@ static Future<void> clearLog() => Platform.isWindows ? _WindowsVpnBackend.clearL
 
   /// Saves [content] as [name] and opens the share sheet so the user picks an app.
   static Future<void> shareFile({required String name, required String content, String title = 'Share'}) =>
-      _methods.invokeMethod('shareFile', {'name': name, 'content': content, 'title': title});
+      Platform.isWindows
+          ? _WindowsVpnBackend.saveFile(name: name, content: content).then<void>((_) {})
+          : _methods.invokeMethod('shareFile', {'name': name, 'content': content, 'title': title});
 
   /// Saves [content] as [name] in Downloads (Android 7-9: a Save-as screen). Returns where
   /// it was saved, or null if the user cancelled.
   static Future<String?> saveFile({required String name, required String content}) =>
-      _methods.invokeMethod<String>('saveFile', {'name': name, 'content': content});
+      Platform.isWindows
+          ? _WindowsVpnBackend.saveFile(name: name, content: content)
+          : _methods.invokeMethod<String>('saveFile', {'name': name, 'content': content});
 
   /// Opens the system file picker and returns the chosen file's name and text, or null if cancelled.
   static Future<({String name, String content})?> pickFile() async {
@@ -139,8 +143,10 @@ static Future<void> clearLog() => Platform.isWindows ? _WindowsVpnBackend.clearL
   static Future<void> stop() => Platform.isWindows ? _WindowsVpnBackend.stop() : _methods.invokeMethod('stop');
 
 /// Starts the setup wizard's Tor with [bridges]; returns its HTTP proxy port (SetupTor.kt).
-  static Future<int> startSetupTor(List<String> bridges) async =>
-      await _methods.invokeMethod<int>('startSetupTor', {'bridges': bridges}) ?? 0;
+  static Future<int> startSetupTor(List<String> bridges) async {
+    if (Platform.isWindows) throw UnsupportedError('Tor setup is not available in the Windows preview.');
+    return await _methods.invokeMethod<int>('startSetupTor', {'bridges': bridges}) ?? 0;
+  }
 
   /// The setup wizard's Tor: bootstrap progress (0-100), whether it runs, and why it stopped.
   static Future<({int progress, bool running, String? error})> setupTorStatus() async {
