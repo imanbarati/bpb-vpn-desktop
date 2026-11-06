@@ -16,6 +16,7 @@ import (
 func main() {
 	configPath := flag.String("config", "", "path to the Xray JSON config")
 	assetDir := flag.String("asset-dir", "", "directory containing geoip.dat, geosite.dat and certificates")
+	parentPID := flag.Uint("parent-pid", 0, "PID of the owning desktop app; exit when it exits")
 	flag.Parse()
 
 	if *configPath == "" {
@@ -41,6 +42,15 @@ func main() {
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	if *parentPID > 0 {
+		parentExited := make(chan struct{})
+		if err := watchParent(uint32(*parentPID), parentExited); err != nil {
+			fmt.Fprintf(os.Stderr, "watch parent process: %v\\n", err)
+			_ = controller.Stop()
+			os.Exit(1)
+		}
+		go func() { <-parentExited; signals <- os.Interrupt }()
+	}
 	<-signals
 	if err := controller.Stop(); err != nil {
 		fmt.Fprintf(os.Stderr, "stop Xray: %v\n", err)
