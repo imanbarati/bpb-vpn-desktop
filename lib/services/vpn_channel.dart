@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -33,7 +35,7 @@ class VpnChannel {
   static Future<bool>? _supportsAppendHttpProxy;
 
   static Future<bool> get supportsAppendHttpProxy {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+    if (Platform.isWindows || kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       return Future.value(false);
     }
     return _supportsAppendHttpProxy ??= _methods
@@ -41,7 +43,7 @@ class VpnChannel {
         .then((supported) => supported ?? false);
   }
 
-  static Stream<VpnStateEvent> get states => _events.receiveBroadcastStream().map((e) {
+  static Stream<VpnStateEvent> get states => Platform.isWindows ? _WindowsVpnBackend.states : _events.receiveBroadcastStream().map((e) {
     final map = Map<String, dynamic>.from(e as Map);
     final at = (map['connectedAt'] as num?)?.toInt() ?? 0;
     return VpnStateEvent(
@@ -72,7 +74,9 @@ class VpnChannel {
     List<String> torCustomBridges = const [],
     Map<String, dynamic>? psiphonConfig,
     bool browserDialer = false,
-  }) => _methods.invokeMethod('start', {
+  }) {
+    if (Platform.isWindows) return _WindowsVpnBackend.start(config: config, proxyOnly: proxyOnly, exit: exit, browserDialer: browserDialer);
+    return _methods.invokeMethod('start', {
     'config': jsonEncode(config),
     'remark': remark,
     'perAppMode': perAppMode,
@@ -103,7 +107,7 @@ class VpnChannel {
   static Future<Map<String, int>> logSizes() async =>
       (await _methods.invokeMapMethod<String, int>('logSizes')) ?? const {};
 
-  static Future<void> clearLog() => _methods.invokeMethod('clearLog');
+  static Future<void> clearLog() => Platform.isWindows ? _WindowsVpnBackend.clearLog() : _methods.invokeMethod('clearLog');
 
   /// Saves [content] as [name] and opens the share sheet so the user picks an app.
   static Future<void> shareFile({required String name, required String content, String title = 'Share'}) =>
@@ -121,7 +125,7 @@ class VpnChannel {
     return (name: file['name'] ?? '', content: file['content'] ?? '');
   }
 
-  static Future<void> stop() => _methods.invokeMethod('stop');
+  static Future<void> stop() => Platform.isWindows ? _WindowsVpnBackend.stop() : _methods.invokeMethod('stop');
 
   /// Starts the setup wizard's Tor with [bridges]; returns its HTTP proxy port (SetupTor.kt).
   static Future<int> startSetupTor(List<String> bridges) async =>
@@ -145,13 +149,13 @@ class VpnChannel {
   }
 
   /// Domain Fronting's CA files (bpb-cert.crt / .key) are in the app's storage.
-  static Future<bool> mitmCaExists() async => await _methods.invokeMethod<bool>('mitmCaExists') ?? false;
+  static Future<bool> mitmCaExists() async => Platform.isWindows ? false : await _methods.invokeMethod<bool>('mitmCaExists') ?? false;
 
-  static Future<void> saveMitmCa(MitmCa ca) => _methods.invokeMethod('saveMitmCa', {'cert': ca.cert, 'key': ca.key});
+  static Future<void> saveMitmCa(MitmCa ca) => Platform.isWindows ? Future.error(UnsupportedError('Windows certificate installation is not implemented yet.')) : _methods.invokeMethod('saveMitmCa', {'cert': ca.cert, 'key': ca.key});
 
   /// Opens Android's CA install; on Android 11+ after saving bpb-cert.crt to Downloads,
   /// whose path it returns.
-  static Future<String?> installMitmCa() => _methods.invokeMethod<String>('installMitmCa');
+  static Future<String?> installMitmCa() => Platform.isWindows ? Future.value(null) : _methods.invokeMethod<String>('installMitmCa');
 
   /// Replaces Xray's geo files (geoip.dat, geosite.dat) with [files], each checked against its
   /// SHA-256 (hex) first: none is replaced unless all match. Xray uses them from its next start.
@@ -208,5 +212,204 @@ class VpnChannel {
           ),
         )
         .toList();
+  }
+}
+
+
+/// Windows v1 backend: local Xray proxy mode. Unsupported modes fail closed.
+class _WindowsVpnBackend {
+  static const _port = 10808;
+  static const _key = r'HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
+  static final _events = StreamController<VpnStateEvent>.broadcast();
+  static Stream<VpnStateEvent> get states => _events.stream;
+  static Process? _process;
+  static String _log = '';
+  static bool _stopping = false;
+  static Directory? _appDir;
+  static Directory? _runtimeDir;
+
+  static void _emit(VpnStatus status, {String? error, DateTime? at}) =>
+      _events.add(VpnStateEvent(status, error, at, null));
+
+  static Future<Directory> _dataDir() async {
+    final root = Platform.environment['LOCALAPPDATA'] ?? Platform.environment['APPDATA'] ?? Directory.systemTemp.path;
+    final dir = Directory(root + Platform.pathSeparator + 'BPB' + Platform.pathSeparator + 'Windows');
+    await dir.create(recursive: true);
+    return dir;
+  }
+
+  static Future<bool> prepare({required bool vpn}) async {
+    if (vpn) return false;
+    if (_process == null) await _restoreProxy();
+    return true;
+  }
+
+  static Future<void> start({required Map<String, dynamic> config, required bool proxyOnly, required String? exit, required bool browserDialer}) async {
+    if (!proxyOnly) throw StateError('Windows preview supports Proxy mode only. VPN/TUN is not available yet.');
+    if (exit != null || browserDialer) throw StateError('Psiphon, Tor, and Browser Dialer are not supported in this Windows preview.');
+    final ins = config['inbounds'];
+    if (ins is! List || !ins.any((v) => v is Map && v['tag'] == 'mixed-in' && v['port'] == _port)) {
+      throw StateError('Expected Xray mixed inbound on 127.0.0.1:$_port was not found.');
+    }
+    if (_process != null) await stop();
+    _emit(VpnStatus.connecting);
+    _log = '';
+    _stopping = false;
+    final installDir = File(Platform.resolvedExecutable).parent;
+    final runtime = Directory(installDir.path + Platform.pathSeparator + 'data');
+    final exe = File(runtime.path + Platform.pathSeparator + 'xray.exe');
+    if (!await exe.exists()) throw StateError('Missing ' + exe.path + '; rebuild the Windows package.');
+    final appDir = await _dataDir();
+    _appDir = appDir;
+    _runtimeDir = runtime;
+    final configFile = File(appDir.path + Platform.pathSeparator + 'config.json');
+    await configFile.writeAsString(jsonEncode(config), flush: true);
+    try {
+      final p = await Process.start(exe.path, ['-config', configFile.path, '-asset-dir', runtime.path], workingDirectory: installDir.path);
+      _process = p;
+      p.stdout.transform(utf8.decoder).listen(_append);
+      p.stderr.transform(utf8.decoder).listen(_append);
+      p.exitCode.then((code) async {
+        if (!identical(_process, p)) return;
+        _process = null;
+        await _restoreProxy();
+        if (!_stopping) _emit(VpnStatus.disconnected, error: code == 0 ? null : 'Xray exited with code $code.');
+        _stopping = false;
+      });
+      var ready = false;
+      final until = DateTime.now().add(const Duration(seconds: 15));
+      while (DateTime.now().isBefore(until) && _process != null) {
+        try {
+          final socket = await Socket.connect('127.0.0.1', _port, timeout: const Duration(milliseconds: 400));
+          socket.destroy();
+          ready = true;
+          break;
+        } catch (_) {
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+      }
+      if (!ready) throw StateError('Xray did not open its proxy port. See the Xray log.');
+      await _applyProxy();
+      _emit(VpnStatus.connected, at: DateTime.now());
+    } catch (e) {
+      final p = _process;
+      _process = null;
+      p?.kill();
+      await _restoreProxy();
+      _emit(VpnStatus.disconnected, error: '$e');
+      rethrow;
+    }
+  }
+
+  static void _append(String s) {
+    _log += s;
+    if (_log.length > 512 * 1024) _log = _log.substring(_log.length - 512 * 1024);
+  }
+
+  static Future<Map<String, Map<String, String>>> _snapshot() async {
+    final values = <String, Map<String, String>>{};
+    for (final name in ['ProxyEnable', 'ProxyServer', 'ProxyOverride']) {
+      final r = await Process.run('reg.exe', ['query', _key, '/v', name]);
+      final m = RegExp('^\\s*$name\\s+(REG_DWORD|REG_SZ)\\s+(.+?)\\s*\\r?\\n', multiLine: true, caseSensitive: false).firstMatch(r.stdout.toString());
+      if (r.exitCode == 0 && m != null) values[name] = {'type': m.group(1)!, 'data': m.group(2)!};
+    }
+    return values;
+  }
+
+  static Future<void> _writeReg(String name, String type, String data) async {
+    final r = await Process.run('reg.exe', ['add', _key, '/v', name, '/t', type, '/d', data, '/f']);
+    if (r.exitCode != 0) throw StateError('Unable to change Windows proxy setting ' + name + ': ' + r.stderr.toString());
+  }
+
+  static Future<void> _refresh() async {
+    const script = r'''
+$src = @"
+using System;
+using System.Runtime.InteropServices;
+public static class BpbWinInet {
+ [DllImport("wininet.dll", SetLastError=true)]
+ public static extern bool InternetSetOption(IntPtr h, int option, IntPtr buffer, int length);
+}
+"@
+Add-Type -TypeDefinition $src
+[BpbWinInet]::InternetSetOption([IntPtr]::Zero,39,[IntPtr]::Zero,0) | Out-Null
+[BpbWinInet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0) | Out-Null
+''';
+    await Process.run('powershell.exe', ['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script]);
+  }
+
+  static Future<void> _applyProxy() async {
+    final dir = _appDir ?? await _dataDir();
+    final backup = File(dir.path + Platform.pathSeparator + 'proxy-backup.json');
+    if (!await backup.exists()) await backup.writeAsString(jsonEncode(await _snapshot()), flush: true);
+    await _writeReg('ProxyServer', 'REG_SZ', '127.0.0.1:$_port');
+    await _writeReg('ProxyOverride', 'REG_SZ', '<local>;localhost;127.*');
+    await _writeReg('ProxyEnable', 'REG_DWORD', '1');
+    await _refresh();
+  }
+
+  static Future<void> _restoreProxy() async {
+    final dir = _appDir ?? await _dataDir();
+    final backup = File(dir.path + Platform.pathSeparator + 'proxy-backup.json');
+    if (!await backup.exists()) return;
+    final raw = jsonDecode(await backup.readAsString());
+    if (raw is Map) {
+      for (final name in ['ProxyEnable','ProxyServer','ProxyOverride']) {
+        final v = raw[name];
+        if (v is Map && v['type'] is String && v['data'] is String) {
+          await _writeReg(name, v['type'] as String, v['data'] as String);
+        } else {
+          await Process.run('reg.exe', ['delete', _key, '/v', name, '/f']);
+        }
+      }
+      await _refresh();
+    }
+    await backup.delete();
+  }
+
+  static Future<void> stop() async {
+    _stopping = true;
+    _emit(VpnStatus.disconnecting);
+    final p = _process;
+    _process = null;
+    if (p != null) {
+      p.kill();
+      try { await p.exitCode.timeout(const Duration(seconds: 5)); } on TimeoutException { p.kill(ProcessSignal.sigkill); }
+    }
+    await _restoreProxy();
+    final dir = _appDir;
+    if (dir != null) {
+      final f = File(dir.path + Platform.pathSeparator + 'config.json');
+      if (await f.exists()) await f.delete();
+    }
+    _stopping = false;
+    _emit(VpnStatus.disconnected);
+  }
+
+  static Future<String> readLog() async => _log;
+  static Future<Map<String,int>> logSizes() async => {'xray': utf8.encode(_log).length};
+  static Future<void> clearLog() async { _log = ''; }
+  static Future<bool> openUrl(String url) async {
+    final u = Uri.tryParse(url);
+    if (u == null || !{'http','https'}.contains(u.scheme)) return false;
+    final p = await Process.start('cmd.exe', ['/c','start','',url], mode: ProcessStartMode.detached);
+    return p.pid > 0;
+  }
+  static Future<int> measureDelay() async {
+    final c = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+    c.findProxy = (_) => 'PROXY 127.0.0.1:$_port';
+    try {
+      final started = DateTime.now();
+      final r = await (await c.getUrl(Uri.parse('https://www.gstatic.com/generate_204'))).close().timeout(const Duration(seconds: 12));
+      await r.drain<void>();
+      return r.statusCode == 204 || r.statusCode == 200 ? DateTime.now().difference(started).inMilliseconds : -1;
+    } catch (_) { return -1; } finally { c.close(force: true); }
+  }
+  static Future<void> saveGeoAssets(Map<String, ({Uint8List data, String sha256})> files) async {
+    final dir = _runtimeDir ?? Directory(File(Platform.resolvedExecutable).parent.path + Platform.pathSeparator + 'data');
+    for (final e in files.entries) {
+      if (!{'geoip.dat','geosite.dat'}.contains(e.key)) continue;
+      await File(dir.path + Platform.pathSeparator + e.key).writeAsBytes(e.value.data, flush: true);
+    }
   }
 }
