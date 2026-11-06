@@ -135,6 +135,7 @@ static Future<void> clearLog() => Platform.isWindows ? _WindowsVpnBackend.clearL
 
   /// Opens the system file picker and returns the chosen file's name and text, or null if cancelled.
   static Future<({String name, String content})?> pickFile() async {
+    if (Platform.isWindows) return _WindowsVpnBackend.pickFile();
     final file = await _methods.invokeMapMethod<String, String>('pickFile');
     if (file == null) return null;
     return (name: file['name'] ?? '', content: file['content'] ?? '');
@@ -150,6 +151,7 @@ static Future<void> clearLog() => Platform.isWindows ? _WindowsVpnBackend.clearL
 
   /// The setup wizard's Tor: bootstrap progress (0-100), whether it runs, and why it stopped.
   static Future<({int progress, bool running, String? error})> setupTorStatus() async {
+    if (Platform.isWindows) return (progress: 0, running: false, error: 'Tor is not available in the Windows preview.');
     final m = await _methods.invokeMapMethod<String, dynamic>('setupTorStatus') ?? const {};
     return (progress: (m['progress'] as int?) ?? 0, running: m['running'] == true, error: m['error'] as String?);
   }
