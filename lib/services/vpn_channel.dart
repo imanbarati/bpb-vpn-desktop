@@ -147,7 +147,7 @@ static Future<void> clearLog() => Platform.isWindows ? _WindowsVpnBackend.clearL
     return (progress: (m['progress'] as int?) ?? 0, running: m['running'] == true, error: m['error'] as String?);
   }
 
-  static Future<void> stopSetupTor() => _methods.invokeMethod('stopSetupTor');
+  static Future<void> stopSetupTor() => Platform.isWindows ? Future.value() : _methods.invokeMethod('stopSetupTor');
 
   /// Opens [url] in the browser; false if nothing could handle it.
   static Future<bool> openUrl(String url) async {
@@ -449,8 +449,30 @@ Add-Type -TypeDefinition $src
   static Future<bool> openUrl(String url) async {
     final u = Uri.tryParse(url);
     if (u == null || !{'http','https'}.contains(u.scheme)) return false;
-    final p = await Process.start('cmd.exe', ['/c','start','',url], mode: ProcessStartMode.detached);
+    final p = await Process.start('explorer.exe', [url], mode: ProcessStartMode.detached);
     return p.pid > 0;
+  }
+  static Future<String?> saveFile({required String name, required String content}) async {
+    final downloads = Directory((Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path) + Platform.pathSeparator + 'Downloads');
+    await downloads.create(recursive: true);
+    final safeName = name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+    final file = File(downloads.path + Platform.pathSeparator + (safeName.isEmpty ? 'bpb-export.txt' : safeName));
+    await file.writeAsString(content, flush: true);
+    return file.path;
+  }
+  static Future<({String name, String content})?> pickFile() async {
+    const script = r'''
+Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.OpenFileDialog
+$dialog.Title = "Open BPB configuration"
+$dialog.Filter = "Configuration files (*.*)|*.*"
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::WriteLine($dialog.FileName) }
+''';
+    final result = await Process.run('powershell.exe', ['-NoProfile','-STA','-NonInteractive','-Command',script]);
+    final path = result.stdout.toString().trim();
+    if (result.exitCode != 0 || path.isEmpty) return null;
+    final file = File(path);
+    return (name: file.uri.pathSegments.last, content: await file.readAsString());
   }
   static Future<int> measureDelay() async {
     final c = HttpClient()..connectionTimeout = const Duration(seconds: 8);
