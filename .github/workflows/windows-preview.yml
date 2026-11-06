@@ -32,6 +32,13 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Install Go for the pinned Xray module
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: xray/go.mod
+          cache: true
+          cache-dependency-path: xray/go.sum
+
       - name: Enable Windows desktop target
         shell: pwsh
         run: flutter create --platforms=windows --project-name bpb .
@@ -51,6 +58,14 @@ jobs:
 
       - name: Build Windows x64 preview
         run: flutter build windows --release
+
+      - name: Fetch Xray geo databases
+        shell: bash
+        run: bash scripts/fetch_geo.sh
+
+      - name: Build and stage Xray for Windows
+        shell: pwsh
+        run: ./scripts/build_xray_windows.ps1
 
       - name: Upload Windows preview
         uses: actions/upload-artifact@v4
