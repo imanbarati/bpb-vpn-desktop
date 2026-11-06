@@ -250,8 +250,25 @@ class _WindowsVpnBackend {
   }
 
   static Future<bool> prepare({required bool vpn}) async {
-    if (vpn) return false;
-    if (_process == null) await _restoreProxy();
+    if (_process == null) {
+      final dir = await _dataDir();
+      final session = File(dir.path + Platform.pathSeparator + 'session.json');
+      if (await session.exists()) {
+        try {
+          final saved = jsonDecode(await session.readAsString());
+          final pid = saved is Map ? saved['pid'] : null;
+          if (pid is int && pid > 0) {
+            await Process.run('taskkill.exe', ['/PID', '$pid', '/T', '/F']);
+          }
+        } catch (_) {
+          // A malformed stale session must not prevent proxy restoration.
+        }
+        await session.delete();
+      }
+      _appDir = dir;
+      await _restoreProxy();
+    }
+    // Let start() show the explicit unsupported-TUN message instead of a fake permission error.
     return true;
   }
 
@@ -353,6 +370,11 @@ Add-Type -TypeDefinition $src
     final dir = _appDir ?? await _dataDir();
     final backup = File(dir.path + Platform.pathSeparator + 'proxy-backup.json');
     if (!await backup.exists()) await backup.writeAsString(jsonEncode(await _snapshot()), flush: true);
+    final process = _process;
+    if (process != null) {
+      final session = File(dir.path + Platform.pathSeparator + 'session.json');
+      await session.writeAsString(jsonEncode({'pid': process.pid}), flush: true);
+    }
     await _writeReg('ProxyServer', 'REG_SZ', '127.0.0.1:$_port');
     await _writeReg('ProxyOverride', 'REG_SZ', '<local>;localhost;127.*');
     await _writeReg('ProxyEnable', 'REG_DWORD', '1');
@@ -390,8 +412,10 @@ Add-Type -TypeDefinition $src
     await _restoreProxy();
     final dir = _appDir;
     if (dir != null) {
-      final f = File(dir.path + Platform.pathSeparator + 'config.json');
-      if (await f.exists()) await f.delete();
+      for (final name in ['config.json', 'session.json']) {
+        final f = File(dir.path + Platform.pathSeparator + name);
+        if (await f.exists()) await f.delete();
+      }
     }
     _stopping = false;
     _emit(VpnStatus.disconnected);
