@@ -301,6 +301,11 @@ class _WindowsVpnBackend {
         if (!identical(_process, p)) return;
         _process = null;
         await _restoreProxy();
+        final dir = _appDir;
+        if (dir != null) {
+          final session = File(dir.path + Platform.pathSeparator + 'session.json');
+          if (await session.exists()) await session.delete();
+        }
         if (!_stopping) _emit(VpnStatus.disconnected, error: code == 0 ? null : 'Xray exited with code $code.');
         _stopping = false;
       });
