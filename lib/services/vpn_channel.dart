@@ -56,10 +56,12 @@ class VpnChannel {
 
   /// Asks for VPN permission if needed; true when granted.
   /// Asks for notification permission and, when [vpn], the VPN permission.
-  static Future<bool> prepare({bool vpn = true}) async =>
-      await _methods.invokeMethod<bool>('prepare', {'vpn': vpn}) ?? false;
+  static Future<bool> prepare({bool vpn = true}) async {
+    if (Platform.isWindows) return _WindowsVpnBackend.prepare(vpn: vpn);
+    return await _methods.invokeMethod<bool>('prepare', {'vpn': vpn}) ?? false;
+  }
 
-  static Future<void> start({
+static Future<void> start({
     required Map<String, dynamic> config,
     required String remark,
     required String perAppMode,
@@ -97,17 +99,18 @@ class VpnChannel {
     'psiphonConfig': psiphonConfig == null ? null : jsonEncode(psiphonConfig),
     // Worker's Browser Dialer: Xray's WebSockets are opened by a WebView (see BrowserDialer.kt).
     'browserDialer': browserDialer,
-  });
+    });
+  }
 
   /// The end of Xray's log for the current/last connection.
   static Future<String> readLog({String log = 'xray'}) async =>
-      await _methods.invokeMethod<String>('readLog', {'log': log}) ?? '';
+      Platform.isWindows ? _WindowsVpnBackend.readLog() : await _methods.invokeMethod<String>('readLog', {'log': log}) ?? '';
 
-  /// Bytes in each log ("xray", "tor", "psiphon") since the last connect.
+/// Bytes in each log ("xray", "tor", "psiphon") since the last connect.
   static Future<Map<String, int>> logSizes() async =>
-      (await _methods.invokeMapMethod<String, int>('logSizes')) ?? const {};
+      Platform.isWindows ? _WindowsVpnBackend.logSizes() : (await _methods.invokeMapMethod<String, int>('logSizes')) ?? const {};
 
-  static Future<void> clearLog() => Platform.isWindows ? _WindowsVpnBackend.clearLog() : _methods.invokeMethod('clearLog');
+static Future<void> clearLog() => Platform.isWindows ? _WindowsVpnBackend.clearLog() : _methods.invokeMethod('clearLog');
 
   /// Saves [content] as [name] and opens the share sheet so the user picks an app.
   static Future<void> shareFile({required String name, required String content, String title = 'Share'}) =>
@@ -127,7 +130,7 @@ class VpnChannel {
 
   static Future<void> stop() => Platform.isWindows ? _WindowsVpnBackend.stop() : _methods.invokeMethod('stop');
 
-  /// Starts the setup wizard's Tor with [bridges]; returns its HTTP proxy port (SetupTor.kt).
+/// Starts the setup wizard's Tor with [bridges]; returns its HTTP proxy port (SetupTor.kt).
   static Future<int> startSetupTor(List<String> bridges) async =>
       await _methods.invokeMethod<int>('startSetupTor', {'bridges': bridges}) ?? 0;
 
@@ -141,6 +144,7 @@ class VpnChannel {
 
   /// Opens [url] in the browser; false if nothing could handle it.
   static Future<bool> openUrl(String url) async {
+    if (Platform.isWindows) return _WindowsVpnBackend.openUrl(url);
     try {
       return await _methods.invokeMethod<bool>('openUrl', {'url': url}) ?? false;
     } on PlatformException {
@@ -160,21 +164,25 @@ class VpnChannel {
   /// Replaces Xray's geo files (geoip.dat, geosite.dat) with [files], each checked against its
   /// SHA-256 (hex) first: none is replaced unless all match. Xray uses them from its next start.
   static Future<void> saveGeoAssets(Map<String, ({Uint8List data, String sha256})> files) =>
-      _methods.invokeMethod('saveGeoAssets', {
-        'files': {
-          for (final e in files.entries) e.key: {'data': e.value.data, 'sha256': e.value.sha256},
-        },
-      });
+      Platform.isWindows
+          ? _WindowsVpnBackend.saveGeoAssets(files)
+          : _methods.invokeMethod('saveGeoAssets', {
+              'files': {
+                for (final e in files.entries) e.key: {'data': e.value.data, 'sha256': e.value.sha256},
+              },
+            });
 
-  /// The cores' versions, from their own reports: Xray (e.g. 26.10.21) and
+/// The cores' versions, from their own reports: Xray (e.g. 26.10.21) and
   /// the Psiphon (its core's module version) and Tor ("Tor version …") binaries; empty if unknown.
   static Future<({String xray, String psiphon, String tor})> versions() async {
+    if (Platform.isWindows) return (xray: '', psiphon: '', tor: '');
     final m = await _methods.invokeMapMethod<String, String>('versions') ?? const {};
     return (xray: m['xray'] ?? '', psiphon: m['psiphon'] ?? '', tor: m['tor'] ?? '');
   }
 
   /// The installed app's version (from pubspec.yaml) and the phone's ABIs, preferred first.
   static Future<({String version, List<String> abis})> appInfo() async {
+    if (Platform.isWindows) return (version: '1.0.0', abis: <String>[]);
     final m = await _methods.invokeMapMethod<String, dynamic>('appInfo') ?? const {};
     return (
       version: '${m['version'] ?? ''}',
@@ -184,6 +192,7 @@ class VpnChannel {
 
   /// Delay in ms through the running tunnel.
   static Future<int> measureDelay() async {
+    if (Platform.isWindows) return _WindowsVpnBackend.measureDelay();
     final ms = await _methods.invokeMethod<int>('measureDelay');
     return ms ?? -1;
   }
@@ -191,6 +200,7 @@ class VpnChannel {
   /// Proxied traffic: bytes in the last second and since connecting, sampled by the
   /// VPN service (which also shows proxy and direct rates in its notification).
   static Future<({int up, int down, int totalUp, int totalDown})> traffic() async {
+    if (Platform.isWindows) return (up: 0, down: 0, totalUp: 0, totalDown: 0);
     final m = await _methods.invokeMapMethod<String, int>('trafficStats');
     return (
       up: m?['proxyUp'] ?? 0,
@@ -201,6 +211,7 @@ class VpnChannel {
   }
 
   static Future<List<InstalledApp>> installedApps() async {
+    if (Platform.isWindows) return const [];
     final list = await _methods.invokeListMethod<Map>('installedApps') ?? const [];
     return list
         .map(
