@@ -324,7 +324,7 @@ class _WindowsVpnBackend {
       final parentPid = getCurrentProcessId();
       final p = await Process.start(
         exe.path,
-        ['-config', configFile.path, '-asset-dir', runtime.path, '-parent-pid', '$parentPid', '-proxy-backup', appDir.path + Platform.pathSeparator + 'proxy-backup.json'],
+        ['-config', configFile.path, '-asset-dir', runtime.path, '-parent-pid', '$parentPid', '-proxy-backup', '${appDir.path}${Platform.pathSeparator}proxy-backup.json'],
         workingDirectory: installDir.path,
       );
       _process = p;
