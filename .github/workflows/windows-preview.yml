@@ -8,6 +8,7 @@ on:
       - "windows-port/**"
     paths:
       - "lib/**"
+      - "test/**"
       - "assets/**"
       - "worker/**"
       - "xray/**"
@@ -19,6 +20,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: windows-preview-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   windows-preview:
