@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -310,7 +311,14 @@ class _WindowsVpnBackend {
     final configFile = File('${appDir.path}${Platform.pathSeparator}config.json');
     await configFile.writeAsString(jsonEncode(config), flush: true);
     try {
-      final p = await Process.start(exe.path, ['-config', configFile.path, '-asset-dir', runtime.path], workingDirectory: installDir.path);
+      final kernel32 = DynamicLibrary.open('kernel32.dll');
+      final getCurrentProcessId = kernel32.lookupFunction<Uint32 Function(), int Function()>('GetCurrentProcessId');
+      final parentPid = getCurrentProcessId();
+      final p = await Process.start(
+        exe.path,
+        ['-config', configFile.path, '-asset-dir', runtime.path, '-parent-pid', '$parentPid'],
+        workingDirectory: installDir.path,
+      );
       _process = p;
       p.stdout.transform(utf8.decoder).listen(_append);
       p.stderr.transform(utf8.decoder).listen(_append);
