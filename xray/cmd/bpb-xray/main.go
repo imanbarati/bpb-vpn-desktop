@@ -17,6 +17,7 @@ func main() {
 	configPath := flag.String("config", "", "path to the Xray JSON config")
 	assetDir := flag.String("asset-dir", "", "directory containing geoip.dat, geosite.dat and certificates")
 	parentPID := flag.Uint("parent-pid", 0, "PID of the owning desktop app; exit when it exits")
+	proxyBackup := flag.String("proxy-backup", "", "WinINet proxy backup to restore when the desktop app exits")
 	flag.Parse()
 
 	if *configPath == "" {
@@ -52,6 +53,11 @@ func main() {
 		go func() { <-parentExited; signals <- os.Interrupt }()
 	}
 	<-signals
+	if *proxyBackup != "" {
+		if err := restoreProxyBackup(*proxyBackup); err != nil {
+			fmt.Fprintf(os.Stderr, "restore Windows proxy: %v\\n", err)
+		}
+	}
 	if err := controller.Stop(); err != nil {
 		fmt.Fprintf(os.Stderr, "stop Xray: %v\n", err)
 		os.Exit(1)
