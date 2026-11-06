@@ -159,3 +159,4 @@ windows-port/         notes/scratch for the port (delete when done)
 ## Progress log
 
 - 2026-11-06 — Scaffolded repo, analyzed upstream architecture, wrote this handoff. No code changed.
+- 2026-11-06 — Added a Windows x64 CI preview workflow and platform-status documentation on `windows-port/ci-foundation`. The workflow generates Flutter's standard Windows runner and builds/tests the shared UI; this is not yet a functional VPN backend or a release. Next: implement the Windows Xray process controller and proxy lifecycle before publishing a release.
