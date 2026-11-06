@@ -43,7 +43,12 @@ class VpnChannel {
         .then((supported) => supported ?? false);
   }
 
-  static Stream<VpnStateEvent> get states => Platform.isWindows ? _WindowsVpnBackend.states : _events.receiveBroadcastStream().map((e) {
+  static Stream<VpnStateEvent> get states {
+    if (Platform.isWindows) {
+      unawaited(_WindowsVpnBackend.recover());
+      return _WindowsVpnBackend.states;
+    }
+    return _events.receiveBroadcastStream().map((e) {
     final map = Map<String, dynamic>.from(e as Map);
     final at = (map['connectedAt'] as num?)?.toInt() ?? 0;
     return VpnStateEvent(
@@ -236,6 +241,7 @@ class _WindowsVpnBackend {
   static Process? _process;
   static String _log = '';
   static bool _stopping = false;
+  static Future<void>? _recovery;
   static Directory? _appDir;
   static Directory? _runtimeDir;
 
@@ -249,25 +255,34 @@ class _WindowsVpnBackend {
     return dir;
   }
 
-  static Future<bool> prepare({required bool vpn}) async {
-    if (_process == null) {
-      final dir = await _dataDir();
-      final session = File(dir.path + Platform.pathSeparator + 'session.json');
-      if (await session.exists()) {
-        try {
-          final saved = jsonDecode(await session.readAsString());
-          final pid = saved is Map ? saved['pid'] : null;
-          if (pid is int && pid > 0) {
-            await Process.run('taskkill.exe', ['/PID', '$pid', '/T', '/F']);
-          }
-        } catch (_) {
-          // A malformed stale session must not prevent proxy restoration.
+  static Future<void> recover() => _recovery ??= _recover();
+
+  static Future<void> _recover() async {
+    if (_process != null) return;
+    final dir = await _dataDir();
+    _appDir = dir;
+    final session = File(dir.path + Platform.pathSeparator + 'session.json');
+    if (await session.exists()) {
+      try {
+        final saved = jsonDecode(await session.readAsString());
+        final pid = saved is Map ? saved['pid'] : null;
+        if (pid is int && pid > 0) {
+          await Process.run('taskkill.exe', ['/PID', '$pid', '/T', '/F']);
         }
-        await session.delete();
+      } catch (error) {
+        _append('Stale Xray session recovery warning: $error\\n');
       }
-      _appDir = dir;
-      await _restoreProxy();
+      await session.delete();
     }
+    try {
+      await _restoreProxy();
+    } catch (error) {
+      _append('Windows proxy restore failed: $error\\n');
+    }
+  }
+
+  static Future<bool> prepare({required bool vpn}) async {
+    await recover();
     // Let start() show the explicit unsupported-TUN message instead of a fake permission error.
     return true;
   }
