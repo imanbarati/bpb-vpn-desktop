@@ -55,7 +55,7 @@ func main() {
 	<-signals
 	if *proxyBackup != "" {
 		if err := restoreProxyBackup(*proxyBackup); err != nil {
-			fmt.Fprintf(os.Stderr, "restore Windows proxy: %v\\n", err)
+			fmt.Fprintf(os.Stderr, "restore Windows proxy: %v\n", err)
 		}
 	}
 	if err := controller.Stop(); err != nil {
