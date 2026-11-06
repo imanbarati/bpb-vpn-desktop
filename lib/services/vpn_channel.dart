@@ -251,7 +251,7 @@ class _WindowsVpnBackend {
 
   static Future<Directory> _dataDir() async {
     final root = Platform.environment['LOCALAPPDATA'] ?? Platform.environment['APPDATA'] ?? Directory.systemTemp.path;
-    final dir = Directory(root + Platform.pathSeparator + 'BPB' + Platform.pathSeparator + 'Windows');
+    final dir = Directory('$root${Platform.pathSeparator}BPB${Platform.pathSeparator}Windows');
     await dir.create(recursive: true);
     return dir;
   }
@@ -262,7 +262,7 @@ class _WindowsVpnBackend {
     if (_process != null) return;
     final dir = await _dataDir();
     _appDir = dir;
-    final session = File(dir.path + Platform.pathSeparator + 'session.json');
+    final session = File('${dir.path}${Platform.pathSeparator}session.json');
     if (await session.exists()) {
       try {
         final saved = jsonDecode(await session.readAsString());
@@ -300,13 +300,13 @@ class _WindowsVpnBackend {
     _log = '';
     _stopping = false;
     final installDir = File(Platform.resolvedExecutable).parent;
-    final runtime = Directory(installDir.path + Platform.pathSeparator + 'data');
-    final exe = File(runtime.path + Platform.pathSeparator + 'xray.exe');
-    if (!await exe.exists()) throw StateError('Missing ' + exe.path + '; rebuild the Windows package.');
+    final runtime = Directory('${installDir.path}${Platform.pathSeparator}data');
+    final exe = File('${runtime.path}${Platform.pathSeparator}xray.exe');
+    if (!await exe.exists()) throw StateError('Missing ${exe.path}; rebuild the Windows package.');
     final appDir = await _dataDir();
     _appDir = appDir;
     _runtimeDir = runtime;
-    final configFile = File(appDir.path + Platform.pathSeparator + 'config.json');
+    final configFile = File('${appDir.path}${Platform.pathSeparator}config.json');
     await configFile.writeAsString(jsonEncode(config), flush: true);
     try {
       final p = await Process.start(exe.path, ['-config', configFile.path, '-asset-dir', runtime.path], workingDirectory: installDir.path);
@@ -319,7 +319,7 @@ class _WindowsVpnBackend {
         await _restoreProxy();
         final dir = _appDir;
         if (dir != null) {
-          final session = File(dir.path + Platform.pathSeparator + 'session.json');
+          final session = File('${dir.path}${Platform.pathSeparator}session.json');
           if (await session.exists()) await session.delete();
         }
         if (!_stopping) _emit(VpnStatus.disconnected, error: code == 0 ? null : 'Xray exited with code $code.');
@@ -367,7 +367,7 @@ class _WindowsVpnBackend {
 
   static Future<void> _writeReg(String name, String type, String data) async {
     final r = await Process.run('reg.exe', ['add', _key, '/v', name, '/t', type, '/d', data, '/f']);
-    if (r.exitCode != 0) throw StateError('Unable to change Windows proxy setting ' + name + ': ' + r.stderr.toString());
+    if (r.exitCode != 0) throw StateError('Unable to change Windows proxy setting $name: ${r.stderr}');
   }
 
   static Future<void> _refresh() async {
@@ -389,11 +389,11 @@ Add-Type -TypeDefinition $src
 
   static Future<void> _applyProxy() async {
     final dir = _appDir ?? await _dataDir();
-    final backup = File(dir.path + Platform.pathSeparator + 'proxy-backup.json');
+    final backup = File('${dir.path}${Platform.pathSeparator}proxy-backup.json');
     if (!await backup.exists()) await backup.writeAsString(jsonEncode(await _snapshot()), flush: true);
     final process = _process;
     if (process != null) {
-      final session = File(dir.path + Platform.pathSeparator + 'session.json');
+      final session = File('${dir.path}${Platform.pathSeparator}session.json');
       await session.writeAsString(jsonEncode({'pid': process.pid}), flush: true);
     }
     await _writeReg('ProxyServer', 'REG_SZ', '127.0.0.1:$_port');
@@ -404,7 +404,7 @@ Add-Type -TypeDefinition $src
 
   static Future<void> _restoreProxy() async {
     final dir = _appDir ?? await _dataDir();
-    final backup = File(dir.path + Platform.pathSeparator + 'proxy-backup.json');
+    final backup = File('${dir.path}${Platform.pathSeparator}proxy-backup.json');
     if (!await backup.exists()) return;
     final raw = jsonDecode(await backup.readAsString());
     if (raw is Map) {
@@ -434,7 +434,7 @@ Add-Type -TypeDefinition $src
     final dir = _appDir;
     if (dir != null) {
       for (final name in ['config.json', 'session.json']) {
-        final f = File(dir.path + Platform.pathSeparator + name);
+        final f = File('${dir.path}${Platform.pathSeparator}$name');
         if (await f.exists()) await f.delete();
       }
     }
@@ -462,10 +462,10 @@ Add-Type -TypeDefinition $src
     } catch (_) { return -1; } finally { c.close(force: true); }
   }
   static Future<void> saveGeoAssets(Map<String, ({Uint8List data, String sha256})> files) async {
-    final dir = _runtimeDir ?? Directory(File(Platform.resolvedExecutable).parent.path + Platform.pathSeparator + 'data');
+    final dir = _runtimeDir ?? Directory('${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}data');
     for (final e in files.entries) {
       if (!{'geoip.dat','geosite.dat'}.contains(e.key)) continue;
-      await File(dir.path + Platform.pathSeparator + e.key).writeAsBytes(e.value.data, flush: true);
+      await File('${dir.path}${Platform.pathSeparator}${e.key}').writeAsBytes(e.value.data, flush: true);
     }
   }
 }
