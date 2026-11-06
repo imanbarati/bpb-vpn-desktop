@@ -149,13 +149,22 @@ windows-port/         notes/scratch for the port (delete when done)
 
 ## 6. Status of this repo
 
-- Local repo created from upstream with full history; `upstream` remote set; this HANDOFF.md added.
-- **Not pushed anywhere and not yet created on GitHub** — no GitHub credentials were available to the
-  agent that scaffolded this. Create the empty repo, then:
-  `git remote add origin <url> && git push -u origin main`
-- Upstream's `README.md` is currently an **empty file** — write a real README for this fork.
-- No Windows or extension code exists yet.
+- The Windows port work is on branch `windows-port/ci-foundation` and is proposed in [draft PR #1](https://github.com/imanbarati/bpb-vpn-desktop/pull/1). It is not merged.
+- Windows Flutter runner scaffolding is generated in CI; Android source files remain unchanged.
+- Windows v1 now has an initial Dart controller path for Xray **proxy mode**: it launches the bundled `xray.exe`, waits for the local mixed inbound, snapshots WinINet proxy values, applies the local proxy, and restores the previous values on disconnect or next app startup. A stale PID marker is used to terminate an orphaned Xray process during recovery.
+- The Windows Xray executable is built from the repository's pinned `xray/` Go module and staged with geo databases by the workflow.
+- This is still a **preview, not a release-ready VPN client**. The controller has not yet been proven by a successful CI run or manual Windows test. TUN/VPN, Psiphon, Tor, Browser Dialer, tray integration, installer, and full Windows UI gating remain unfinished. Some Android-only utility methods still need explicit Windows handling.
+- Do not create a public release until the Windows build and tests pass and proxy connect/disconnect/recovery are manually tested on a real Windows machine.
 
 ## Progress log
 
 - 2026-11-06 — Scaffolded repo, analyzed upstream architecture, wrote this handoff. No code changed.
+- 2026-11-06 — Added a Windows x64 CI preview workflow, Windows status/build documentation, a standalone Xray process entry point (`xray/cmd/bpb-xray`), and a PowerShell build/staging script. CI now builds the shared Flutter UI and the pinned Xray core into the Windows bundle. This still does **not** connect the UI to Xray: Windows `VpnChannel`, safe system-proxy apply/restore, and connection lifecycle remain unimplemented. No Windows VPN release is ready. Next: implement and test the Windows proxy-mode controller, then wire UI state and error handling to it.
+
+- 2026-11-06 — Implemented the first Windows proxy-mode backend in `VpnChannel`: Xray child-process launch, readiness check for the mixed inbound, WinINet system-proxy snapshot/apply/restore, stale-session recovery, log access, and a proxied latency probe. Unsupported TUN, Psiphon, Tor, and Browser Dialer paths fail closed. Windows CI initially failed because the worker minified asset was not generated and Flutter generated an invalid template widget test; workflow now builds the worker asset and removes that generated test, and a pre-existing unused local in the Tor config test was removed. The updated workflow and controller are being validated by GitHub Actions; no release artifact has been verified yet.
+
+- 2026-11-06 — Added checksum verification for Windows geo-asset replacement, Windows file import/export helpers, safe URL opening, and a portable ZIP packager that includes the app, Xray core, README, license, and Windows preview notes. Updated the draft PR description and added per-branch CI concurrency. The latest Windows workflow is still running; no successful build artifact or real-machine proxy test has been confirmed.
+
+- 2026-11-06 — Added a Windows parent-process watcher to the Xray wrapper. The desktop app passes its PID via a small Kernel32 FFI call; Xray holds a process handle and shuts itself down when the Flutter app exits, preventing the proxy process from being left behind after a normal or abnormal app close. The newest CI run is queued for this revision.
+
+- 2026-11-06 — Hardened abnormal-exit handling: the Xray child now receives the path to the saved WinINet proxy snapshot and restores the previous registry values plus WinINet refresh itself when the Flutter parent process exits. This closes the gap where killing the app could leave Windows pointed at a dead local proxy. Windows CI is being rerun against this revision; no build artifact has yet been verified.

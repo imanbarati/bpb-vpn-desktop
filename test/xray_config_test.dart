@@ -680,7 +680,7 @@ void main() {
         () => builder({}, device).build(ConnectionMode.tor),
         throwsStateError,
       );
-      final c = await builder({
+      await builder({
         'tor': {
           'bridges': ['obfs4 192.0.2.1:443 FP cert=abc iat-mode=0'],
         },

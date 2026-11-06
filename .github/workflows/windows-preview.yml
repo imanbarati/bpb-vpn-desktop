@@ -1,0 +1,98 @@
+name: Windows desktop build (preview)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - "windows-port/**"
+    paths:
+      - "lib/**"
+      - "test/**"
+      - "assets/**"
+      - "worker/**"
+      - "xray/**"
+      - "scripts/**"
+      - "windows/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/windows-preview.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-preview:
+    name: Windows x64 Flutter preview
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Go for the pinned Xray module
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: xray/go.mod
+          cache: true
+          cache-dependency-path: xray/go.sum
+
+      - name: Enable Windows desktop target
+        shell: pwsh
+        run: |
+          flutter create --platforms=windows --project-name bpb .
+          # flutter create generates a template test that references MyApp; this app has no MyApp.
+          if (Test-Path test/widget_test.dart) { Remove-Item test/widget_test.dart -Force }
+
+      - name: Build the bundled Cloudflare Worker asset
+        shell: pwsh
+        working-directory: worker
+        run: |
+          npm install --no-package-lock --no-audit --no-fund
+          npm run minify
+
+      - name: Fetch Tor bridge asset required by pubspec
+        shell: bash
+        run: bash scripts/fetch_tor_bridges.sh
+
+      - name: Resolve packages
+        run: flutter pub get
+
+      - name: Analyze Dart source
+        run: flutter analyze --no-pub
+
+      - name: Run unit tests
+        run: flutter test --no-pub
+
+      - name: Build Windows x64 preview
+        run: flutter build windows --release
+
+      - name: Fetch Xray geo databases
+        shell: bash
+        run: bash scripts/fetch_geo.sh
+
+      - name: Build and stage Xray for Windows
+        shell: pwsh
+        run: ./scripts/build_xray_windows.ps1
+
+      - name: Package portable Windows preview
+        shell: pwsh
+        run: ./scripts/package_windows.ps1
+
+      - name: Upload Windows preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpb-windows-x64-preview
+          path: dist/BPB-VPN-Windows-x64-preview.zip
+          if-no-files-found: error
+          retention-days: 14
