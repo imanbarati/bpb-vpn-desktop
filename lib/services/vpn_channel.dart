@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:pointycastle/digests/sha256.dart';
 
 import 'mitm_ca.dart';
 
@@ -462,10 +463,19 @@ Add-Type -TypeDefinition $src
     } catch (_) { return -1; } finally { c.close(force: true); }
   }
   static Future<void> saveGeoAssets(Map<String, ({Uint8List data, String sha256})> files) async {
-    final dir = _runtimeDir ?? Directory('${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}data');
+    final validated = <String, Uint8List>{};
     for (final e in files.entries) {
-      if (!{'geoip.dat','geosite.dat'}.contains(e.key)) continue;
-      await File('${dir.path}${Platform.pathSeparator}${e.key}').writeAsBytes(e.value.data, flush: true);
+      if (!{'geoip.dat', 'geosite.dat'}.contains(e.key)) continue;
+      final digest = SHA256Digest().process(e.value.data);
+      final actual = digest.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      if (actual != e.value.sha256.toLowerCase()) {
+        throw StateError('Checksum mismatch for ${e.key}; no geo files were replaced.');
+      }
+      validated[e.key] = e.value.data;
+    }
+    final dir = _runtimeDir ?? Directory('${File(Platform.resolvedExecutable).parent.path}${Platform.pathSeparator}data');
+    for (final entry in validated.entries) {
+      await File('${dir.path}${Platform.pathSeparator}${entry.key}').writeAsBytes(entry.value, flush: true);
     }
   }
 }
