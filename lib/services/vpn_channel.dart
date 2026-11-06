@@ -58,6 +58,7 @@ class VpnChannel {
       map['detail'] as String?,
     );
   });
+  }
 
   /// Asks for VPN permission if needed; true when granted.
   /// Asks for notification permission and, when [vpn], the VPN permission.
