@@ -44,7 +44,17 @@ jobs:
 
       - name: Enable Windows desktop target
         shell: pwsh
-        run: flutter create --platforms=windows --project-name bpb .
+        run: |
+          flutter create --platforms=windows --project-name bpb .
+          # flutter create generates a template test that references MyApp; this app has no MyApp.
+          if (Test-Path test/widget_test.dart) { Remove-Item test/widget_test.dart -Force }
+
+      - name: Build the bundled Cloudflare Worker asset
+        shell: pwsh
+        working-directory: worker
+        run: |
+          npm install --no-package-lock --no-audit --no-fund
+          npm run minify
 
       - name: Fetch Tor bridge asset required by pubspec
         shell: bash
