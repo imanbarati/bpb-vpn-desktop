@@ -49,6 +49,7 @@ flutter test --no-pub
 flutter build windows --release
 bash scripts/fetch_geo.sh
 ./scripts/build_xray_windows.ps1
+./scripts/package_windows.ps1
 ```
 
 The app is written under build/windows/x64/runner/Release/. The staged Xray executable and
