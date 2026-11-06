@@ -1,23 +1,32 @@
 # Windows implementation notes
 
-The Windows runner is generated in CI with Flutter's official Windows template until the runner
-files are checked in and customized. This keeps the initial Windows build aligned with the
-installed Flutter SDK.
+The Windows runner is generated in CI with Flutter's official Windows template. The Android
+runner and Kotlin VPN service remain separate and unchanged.
 
-## First milestone
+## Implemented preview path
 
-A Windows preview build is not a VPN release. The existing `VpnChannel` uses Android
-MethodChannel/EventChannel APIs; no Windows implementation currently handles those calls.
-Do not advertise connection, system-proxy, TUN, Psiphon, Tor, tray, or installer support until
-those features have been implemented and tested.
-
-The first functional milestone is a Windows x64 proxy-mode controller:
+The Windows branch now routes VpnChannel to a Dart desktop controller for a limited first
+milestone:
 
 - Launch the pinned Xray core as a child process using the existing JSON config builder.
-- Keep the mixed inbound bound to loopback by default.
-- Apply the Windows per-user proxy only after Xray is listening.
-- Save the prior proxy settings and restore them on disconnect, startup failure, and normal app exit.
-- Add a recovery mechanism for abnormal app termination before enabling system-wide proxy changes.
-- Reject unsupported VPN/TUN mode with a clear user-facing error rather than invoking Android channels.
+- Require the loopback mixed inbound on port 10808 and wait for it to accept connections.
+- Apply the current-user WinINet system proxy only after Xray is listening.
+- Snapshot the prior ProxyEnable, ProxyServer, and ProxyOverride registry values.
+- Restore those values on disconnect, Xray exit, or recovery during the next app launch.
+- Record the child PID so an orphaned Xray process can be terminated during recovery.
+- Reject TUN, Psiphon, Tor, and Browser Dialer modes with an explicit unsupported-mode error.
 
-Use a Windows Job Object or equivalent process-tree containment before adding child processes.
+This implementation is experimental. It has not yet passed a complete Windows CI build or a
+manual test on a real Windows machine. The proxy restore path must be exercised before release.
+
+## Remaining release gates
+
+1. Pass Windows Dart analysis, unit tests, Flutter release build, and Xray cross-build in CI.
+2. Manually test connect/disconnect, failed startup, unexpected Xray exit, and app restart recovery.
+3. Add UI gating for Android-only settings and utilities.
+4. Add tray integration and a signed or clearly documented unsigned installer.
+5. Port Psiphon and Tor as Windows child processes.
+6. Implement TUN separately with Wintun, route bypass, DNS handling, and elevation.
+
+Do not publish a GitHub Release until the proxy path is tested on Windows. Use [HANDOFF.md](../HANDOFF.md)
+for the architecture and progress history.
