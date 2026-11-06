@@ -7,3 +7,6 @@ package main
 func watchParent(_ uint32, _ chan<- struct{}) error {
 	return nil
 }
+
+// Non-Windows builds do not manage WinINet settings.
+func restoreProxyBackup(_ string) error { return nil }
