@@ -453,10 +453,11 @@ Add-Type -TypeDefinition $src
     return p.pid > 0;
   }
   static Future<String?> saveFile({required String name, required String content}) async {
-    final downloads = Directory((Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path) + Platform.pathSeparator + 'Downloads');
+    final home = Platform.environment['USERPROFILE'] ?? Directory.systemTemp.path;
+    final downloads = Directory('$home${Platform.pathSeparator}Downloads');
     await downloads.create(recursive: true);
     final safeName = name.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
-    final file = File(downloads.path + Platform.pathSeparator + (safeName.isEmpty ? 'bpb-export.txt' : safeName));
+    final file = File('${downloads.path}${Platform.pathSeparator}${safeName.isEmpty ? 'bpb-export.txt' : safeName}');
     await file.writeAsString(content, flush: true);
     return file.path;
   }
