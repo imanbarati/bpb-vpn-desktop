@@ -45,7 +45,7 @@ func main() {
 	if *parentPID > 0 {
 		parentExited := make(chan struct{})
 		if err := watchParent(uint32(*parentPID), parentExited); err != nil {
-			fmt.Fprintf(os.Stderr, "watch parent process: %v\\n", err)
+			fmt.Fprintf(os.Stderr, "watch parent process: %v\n", err)
 			_ = controller.Stop()
 			os.Exit(1)
 		}
