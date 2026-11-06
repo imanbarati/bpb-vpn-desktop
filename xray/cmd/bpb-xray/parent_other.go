@@ -2,8 +2,8 @@
 
 package main
 
-// The shipped desktop executable is built for Windows. Keep other-platform Go tooling usable.
-func watchParent(_ uint32, exited chan<- struct{}) error {
-	close(exited)
+// The shipped desktop executable is built for Windows. On other platforms, leave
+// lifetime management to the caller rather than signaling an immediate parent exit.
+func watchParent(_ uint32, _ chan<- struct{}) error {
 	return nil
 }
