@@ -173,14 +173,14 @@ class AppState extends ChangeNotifier {
   /// WARP / MASQUE once registered; Psiphon, Tor and Serverless always.
   List<ConnectionMode> get availableModes => [
     for (final m in ConnectionMode.values)
-      if ((!Platform.isWindows || (m != ConnectionMode.psiphon && m != ConnectionMode.tor)) &&
-          switch (m) {
-        ConnectionMode.worker => deployments.isNotEmpty,
-        ConnectionMode.warp => profile.warp.account != null,
-        ConnectionMode.masque => profile.masque.account != null,
-        _ => true,
-      })
-        m,
+      if (!Platform.isWindows || (m != ConnectionMode.psiphon && m != ConnectionMode.tor))
+        if (switch (m) {
+          ConnectionMode.worker => deployments.isNotEmpty,
+          ConnectionMode.warp => profile.warp.account != null,
+          ConnectionMode.masque => profile.masque.account != null,
+          _ => true,
+        })
+          m,
   ];
 
   /// The chosen type, or the first available one when it can't be used (yet).
