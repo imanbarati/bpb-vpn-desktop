@@ -32,7 +32,7 @@ Sources:
 - Flutter desktop UI and Dart service layer.
 - Windows backend is currently Xray child process + local mixed proxy + WinINet system proxy.
 - No TUN/Wintun, transparent per-app routing, Android VPN service, or Android native libraries.
-- BPB's bundled Xray version must be inventoried before assuming compatibility with upstream FLUX config fields.
+- BPB pins `github.com/xtls/xray-core v1.260327.1-0.20261031132019-a4a3dff5b20c` in `xray/go.mod`; the similar version lineage is not evidence that upstream FLUX-specific config fields or runtime features are present.
 
 ## Work completed
 
@@ -42,6 +42,7 @@ Sources:
 - Added `test/mlm_flux_test.dart` for scoring, hysteresis, candidate identity, breaker opening, cooldown, and reset.
 - Linked the port plan from root README and documented the decision in `docs/EXTERNAL-INTEGRATIONS.md`.
 - No MLM VPN source files, native binaries, Android dependencies, or public node lists have been copied.
+- The separate `mlmvpn/mlmvpn_windows` project was reviewed as a Windows reference only. Its custom MLMVPN Attribution License 1.0 is source-available, not OSI-approved, and has a no-sublicensing condition; do not copy its code into BPB without separate written permission.
 - The Dart primitives are not connected to profile parsing, candidate probing, Xray config generation, connection UI, or WinINet. Tests were authored but not run in this session.
 
 ## Next agent — exact sequence
