@@ -1,6 +1,6 @@
 # MLM VPN FLUX component — Windows port plan
 
-**Status: architecture accepted; runtime port not yet implemented.**  
+**Status: initial Dart primitives added; route engine not yet wired.**  
 Target: `imanbarati/bpb-vpn-desktop` (Flutter Windows, experimental Xray system-proxy mode).
 
 Upstream: https://github.com/mlmvpn/mlmvpn_android  
@@ -12,7 +12,7 @@ License: GPL-3.0 with an additional visible attribution requirement to **mlmvpn*
 
 Port **FLUX only**, as an independently testable component under `lib/services/mlm_flux/`. Do not fork the Android application wholesale and do not import its Compose UI, Android services, Android-only native libraries, Gereh messenger, Cloudflare control panel, MAE, or unrelated engines into BPB.
 
-FLUX is the best first candidate because its upstream architecture separates a pure-Kotlin control plane from an Xray data plane. The control plane can be reimplemented in Dart for this Flutter application. This is a port, not a binary-compatible reuse of Kotlin code.
+FLUX is the best first candidate because its upstream architecture separates a pure-Kotlin control plane from an Xray data plane. The control plane is being reimplemented in Dart for this Flutter application. This is a port, not a binary-compatible reuse of Kotlin code.
 
 ## Why a direct copy will not work
 
@@ -26,20 +26,20 @@ BPB Windows currently exposes a local Xray mixed proxy and WinINet system-proxy 
 
 ## Component boundary
 
-Proposed layout:
+Target layout:
 
 ```
 lib/services/mlm_flux/
-  model/       candidate, route, network fingerprint, country proof
-  parse/       strict supported profile parsing (reuse BPB importers)
-  probe/       direct TCP/TLS reachability and local-proxy end-to-end probes
-  race/        bounded candidate race and grace window
-  score/       RTT, success EWMA, stability, freshness, failure penalties
-  memory/      per-network route memory and schema migrations
-  breaker/     cooldown, quarantine, recovery
-  compile/     Xray proxy-mode config compilation (only verified fields)
-  engine/      connect, verify, watch, failover orchestration
-  store/       atomic local state persistence
+  flux_route.dart                 candidate model + score breakdown + scorer
+  flux_circuit_breaker.dart       cooldown and recovery
+  parse/                          strict supported profile parsing (reuse BPB importers)
+  probe/                          direct TCP/TLS and local-proxy end-to-end probes
+  race/                           bounded candidate race and grace window
+  memory/                         per-network route memory and schema migrations
+  compile/                        Xray proxy-mode config compilation (verified fields only)
+  engine/                          connect, verify, watch, failover orchestration
+  store/                           atomic local state persistence
+test/mlm_flux_test.dart            scorer, hysteresis, candidate and breaker tests
 ```
 
 The component must depend on a narrow adapter, not on Flutter widgets or WinINet implementation details:
@@ -103,4 +103,9 @@ Keep the upstream license and applicable third-party notices with redistributed 
 
 ## Current implementation status
 
-This document is an integration design only. No MLM VPN source, native binary, engine, or profile source list has been copied into BPB yet. The next coding milestone is the Xray capability inventory followed by the small Dart model/parser/scorer package and its unit tests.
+Implemented in BPB:
+- `lib/services/mlm_flux/flux_route.dart`: candidate/metrics/score models, transparent weighted scorer, and 15% switch hysteresis.
+- `lib/services/mlm_flux/flux_circuit_breaker.dart`: three-failure opening threshold and exponential cooldown capped at six hours.
+- `test/mlm_flux_test.dart`: deterministic unit tests for score ordering, hysteresis, redacted candidate identity, cooldown, and reset.
+
+The weights in the Dart scorer are an explicit first-pass adaptation for Windows proxy mode, not claimed to be numerically identical to the upstream Android scorer. These primitives are not yet wired to profile parsing, route probes, Xray config generation, connection UI, or the Windows proxy controller. Tests have been authored but have not yet been run in this session. No MLM VPN source, native binary, engine, or public profile source list has been copied into BPB.
