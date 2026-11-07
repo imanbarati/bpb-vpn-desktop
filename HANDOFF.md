@@ -254,3 +254,33 @@ The MTU implementation received a pure target parser and unit tests:
 - `c830be0e1fd68791a09f7d224343d51ca84d2311` — wire the UI to the shared parser.
 
 The earlier README/handoff correction commits are `2ec73fbaede0c0f4c821b7912f3c4297f647804d` and `e70077480790a58ab02450b5d276f280abd7706e`. The latter records the feature head before the parser follow-up. Current code is newer than that recorded head; inspect latest commits and Actions before release. No claim of CI success is made for these follow-up changes.
+
+
+## 2026-11-07 — External anti-censorship integrations review
+
+Reviewed Shroudly, thefeed and behradNG against the current Windows proxy-mode architecture.
+See [docs/EXTERNAL-INTEGRATIONS.md](docs/EXTERNAL-INTEGRATIONS.md) for the decisions and source
+references.
+
+- **Shroudly:** repository is MIT-licensed and contains a portable C local SOCKS engine plus a
+  separate Windows WinDivert Advanced backend. Its default engine is the most promising optional
+  Windows companion for direct-to-origin SNI/Host desynchronization and encrypted DNS. It is not
+  an Xray outbound and must not be assumed to chain through BPB Worker/WARP/MASQUE. Keep it
+  separate for now; both products own system-proxy settings, so concurrent use is prohibited.
+- **thefeed:** recommend its standalone Windows client for its own DNS-based feeds/messenger.
+  Its DNS transport and server protocol are not a general IP tunnel or Xray outbound. Do not
+  embed its server, credentials, Telegram login, resolver bank or messenger identity in BPB.
+- **behradNG:** keep standard supported Xray profile import only. Aether and Saturn remain
+  unimplemented native transports. No proprietary URI is advertised as supported; no Alan DPI
+  OOB packet injection or Saturn crypto is copied.
+- No third-party source, binary, driver, dependency or protocol code was copied in this review.
+  No new connection mode was added. This is an integration decision/documentation change, not
+  proof of interoperability or a new anti-DPI feature.
+- Next implementation options: (1) a separate, explicit Shroudly companion launcher that warns
+  BPB must be disconnected; (2) add standard URI regression fixtures from behradNG only after
+  checking exact formats against BPB's parser; (3) keep thefeed as an external app link. Before
+  embedding Shroudly, pin a commit and build/test its process contract and WinDivert lifecycle.
+
+Validation: source/repository metadata and documentation were reviewed through GitHub. No
+Windows build, Shroudly binary execution, packet test, thefeed server deployment, or Aether/
+Saturn interoperability test was run. Do not claim these features are implemented in BPB.
