@@ -131,8 +131,9 @@ Implementation plan and handoff:
 - [FLUX component port plan](../components/mlmvpn-flux/PORTING.md)
 - [FLUX component handoff](../components/mlmvpn-flux/HANDOFF.md)
 
-No MLM VPN source or binary has been copied into BPB yet. This section records the integration
-decision only; it is not a claim that FLUX is implemented.
+The first Dart scoring and circuit-breaker primitives are now in BPB, but they are not wired to live routes. No Android source files, Windows-app source files, or native binaries have been copied.
+
+The maintainer also publishes [MLMVPN for Windows](https://github.com/mlmvpn/mlmvpn_windows). That is a separate Electron application and a useful operational reference, but its own MLMVPN Attribution License 1.0 is source-available and not OSI-approved; do not copy its source into this GPL-3.0 repository without a separate written licensing arrangement.
 
 ## Windows coexistence rules
 
