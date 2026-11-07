@@ -173,7 +173,8 @@ class AppState extends ChangeNotifier {
   /// WARP / MASQUE once registered; Psiphon, Tor and Serverless always.
   List<ConnectionMode> get availableModes => [
     for (final m in ConnectionMode.values)
-      if (switch (m) {
+      if ((!Platform.isWindows || (m != ConnectionMode.psiphon && m != ConnectionMode.tor)) &&
+          switch (m) {
         ConnectionMode.worker => deployments.isNotEmpty,
         ConnectionMode.warp => profile.warp.account != null,
         ConnectionMode.masque => profile.masque.account != null,
@@ -305,9 +306,29 @@ class AppState extends ChangeNotifier {
         .updated('vless', null);
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
     // Windows v1 only supports the local system-proxy path; never default into TUN mode.
-    if (Platform.isWindows && device.appMode != AppMode.proxy) {
-      device = device.updated('appMode', AppMode.proxy.name);
-      await _prefs.setString(_kDevice, jsonEncode(device.toSparseJson()));
+    if (Platform.isWindows) {
+      var windowsDevice = device.updated('appMode', AppMode.proxy.name);
+      if (windowsDevice.connectionType == 'psiphon' || windowsDevice.connectionType == 'tor') {
+        windowsDevice = windowsDevice.updated('connection.type', ConnectionMode.worker.name);
+      }
+      if (windowsDevice.workerVariant == 'browserDialer') {
+        windowsDevice = windowsDevice.updated('connection.workerVariant', 'normal');
+      }
+      if (windowsDevice.exitNode == ExitNode.psiphon || windowsDevice.exitNode == ExitNode.tor) {
+        windowsDevice = windowsDevice.updated('exit.node', ExitNode.worker.name);
+      }
+      final supportedExits = {
+        for (final entry in windowsDevice.exitNodes.entries)
+          if (entry.value != ExitNode.psiphon && entry.value != ExitNode.tor)
+            entry.key: entry.value.name,
+      };
+      windowsDevice = windowsDevice.updated('exit.nodes', supportedExits);
+      if (jsonEncode(windowsDevice.toSparseJson()) != jsonEncode(device.toSparseJson())) {
+        device = windowsDevice;
+        await _prefs.setString(_kDevice, jsonEncode(device.toSparseJson()));
+      } else {
+        device = windowsDevice;
+      }
     }
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
