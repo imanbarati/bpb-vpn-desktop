@@ -1,8 +1,8 @@
 # External anti-censorship integrations
 
-This document records the safe integration decisions for three reviewed projects. These are
-complementary tools, not drop-in Xray outbounds. Do not silently combine their network engines
-or let two applications own the Windows system proxy at the same time.
+This document records the safe integration decisions for reviewed projects. These are
+complementary tools or separately ported components, not automatically compatible Xray outbounds.
+Do not silently combine network engines or let two applications own the Windows system proxy.
 
 ## 1. Shroudly — recommended as a separate Windows companion
 
@@ -98,12 +98,49 @@ native transports/protocols with platform-specific lifecycle and server componen
 - Keep Saturn SSH provisioning out of BPB. It creates/manages remote infrastructure and needs
   a separate consent, credential-storage, host-key verification and server lifecycle design.
 
+## 4. MLM VPN — FLUX as a separately ported Windows component
+
+Repository: https://github.com/mlmvpn/mlmvpn_android  
+License: GPL-3.0 with a visible original-developer attribution requirement; preserve credit to
+**mlmvpn** and all applicable third-party notices if source or derivative code is incorporated.
+
+MLM VPN is a Kotlin/Jetpack Compose Android application with many engines. Its FLUX design is
+the strongest candidate for BPB because the upstream describes a JVM-only control plane separated
+from its Xray data plane. However, the shipped Android implementation relies on a modified Xray
+core, Android TUN service, Android network lifecycle, and features that BPB's current Windows
+proxy-only runtime does not yet provide.
+
+### Decision
+
+- Port FLUX's route selection, candidate racing, scoring, per-network memory, and circuit-breaker
+  concepts into a **new Dart component**, not by importing the Android application or its UI.
+- Keep the first version strictly proxy-mode-only and opt-in. BPB's existing Xray child process
+  and WinINet controller remain the only owners of the local proxy/system proxy lifecycle.
+- Inventory BPB's exact Xray version and verify every required config feature before compiling
+  FLUX configs. Do not assume the Android project's custom core features exist in BPB's binary.
+- Use BPB's existing supported URI parser and config builder. Add a profile type only after
+  tests prove the bundled Xray core supports it.
+- Require end-to-end HTTP probes through each candidate's local proxy and independently verified
+  exit country; TCP/TLS reachability alone must never mark a route connected.
+- Defer MAE, per-app routing, FakeDNS/TUN, Aether, WARP, MASQUE, AmneziaWG, Gereh, and Android
+  native libraries. They require separate Windows-native designs and tests.
+- Do not silently add upstream public node lists. Candidate sources must be user-visible and
+  configurable; private subscriptions and credentials stay local.
+
+Implementation plan and handoff:
+- [FLUX component port plan](../components/mlmvpn-flux/PORTING.md)
+- [FLUX component handoff](../components/mlmvpn-flux/HANDOFF.md)
+
+No MLM VPN source or binary has been copied into BPB yet. This section records the integration
+decision only; it is not a claim that FLUX is implemented.
+
 ## Windows coexistence rules
 
 1. Only one product may own the system proxy at a time: BPB or Shroudly.
 2. thefeed does not need to own the system proxy; it remains independent.
 3. A behradNG standard profile can be imported only through BPB's existing supported parser.
-4. No third-party native engine is shipped until its source revision, license, build inputs,
+4. MLM FLUX, when implemented, must use BPB's existing proxy runtime and must not own WinINet.
+5. No third-party native engine is shipped until its source revision, license, build inputs,
    hashes, runtime contract, process cleanup and Windows test evidence are recorded in
    `HANDOFF.md`.
 
@@ -114,3 +151,6 @@ native transports/protocols with platform-specific lifecycle and server componen
 - thefeed architecture and deployment: https://github.com/sartoopjj/thefeed#how-it-works
 - behradNG integration notes: https://github.com/dashbehrad/behradNG/blob/main/AETHER-INTEGRATION.md
 - behradNG Saturn documentation: https://github.com/dashbehrad/behradNG/tree/main/saturn-core
+- MLM VPN FLUX architecture: https://github.com/mlmvpn/mlmvpn_android/blob/main/FLUX_ARCHITECTURE.md
+- MLM VPN FLUX implementation state: https://github.com/mlmvpn/mlmvpn_android/blob/main/FLUX_IMPLEMENTATION_STATE.md
+- MLM VPN MAE architecture: https://github.com/mlmvpn/mlmvpn_android/blob/main/MAE_ARCHITECTURE.md
