@@ -232,7 +232,9 @@ class _ModeSelector extends StatelessWidget {
     }
     if (state.mode == ConnectionMode.serverless) {
       return ChipMenu(
-        values: ServerlessMode.values,
+        values: Platform.isWindows
+            ? const [ServerlessMode.fragment]
+            : ServerlessMode.values,
         selected: state.serverlessMode,
         label: (v) => v.label,
         onSelected: state.setServerlessMode,
