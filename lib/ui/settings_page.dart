@@ -85,7 +85,7 @@ class SettingsPage extends StatelessWidget {
             children: [
               if (Platform.isWindows)
                 ListTile(
-                  leading: const Icon(Symbols.network_check_rounded),
+                  leading: const Icon(Icons.network_check),
                   title: const Text('Path MTU Finder'),
                   subtitle: const Text('Measure IPv4 path MTU, packet loss and a conservative Xray MTU suggestion'),
                   trailing: const Icon(Symbols.chevron_right_rounded),
@@ -94,7 +94,7 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
               ListTile(
-                leading: const Icon(Symbols.public_rounded),
+                leading: const Icon(Icons.public),
                 title: const Text('Apply Iran routing preset'),
                 subtitle: const Text('Direct Iran traffic; block ads, malware, phishing and cryptominers'),
                 trailing: const Icon(Symbols.chevron_right_rounded),
