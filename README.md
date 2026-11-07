@@ -28,6 +28,7 @@ test. Do not treat the current branch as a working release until those checks pa
 | Tray, installer, auto-start | Not implemented |
 | Windows path-MTU diagnostics | Implemented; real Windows validation pending |
 | Iran routing preset | Implemented using existing geo/routing rules; verify bundled geo data |
+| MLM FLUX route scoring primitives | Added; not yet connected to live routes |
 
 The first usable Windows release is intended to be **proxy mode only**, without administrator
 rights. TUN mode is a later milestone.
@@ -46,12 +47,14 @@ TUN service, custom Xray build, Android UI, MAE, and native Android libraries ar
 drop-ins.
 
 - [FLUX component port plan](components/mlmvpn-flux/PORTING.md)
+- [FLUX component handoff](components/mlmvpn-flux/HANDOFF.md)
 - [Upstream FLUX architecture](https://github.com/mlmvpn/mlmvpn_android/blob/main/FLUX_ARCHITECTURE.md)
 - [Upstream implementation state](https://github.com/mlmvpn/mlmvpn_android/blob/main/FLUX_IMPLEMENTATION_STATE.md)
 
-No MLM VPN source or binaries have been copied yet. FLUX will remain opt-in and proxy-mode-only
-until its parser, route probes, scoring, failover, and recovery have Windows tests. Any derivative
-code must retain GPL-3.0 compatibility and visible credit to the original developer, **mlmvpn**.
+The first isolated Dart primitives now exist: route/metrics models, an explainable score, 15%
+switch hysteresis, and an exponential circuit breaker. Profile discovery, live probes, Xray
+integration, UI, and Windows runtime wiring are still pending. Any derivative code must retain
+GPL-3.0 compatibility and visible credit to the original developer, **mlmvpn**.
 
 ## Optional companion tools
 
