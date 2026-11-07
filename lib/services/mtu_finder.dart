@@ -117,6 +117,24 @@ class MtuFinder {
     return {'results': results, 'best': best};
   }
 
+  /// Parses and validates the IPv4 target list without performing network I/O.
+  static List<String> parseTargets(String raw) {
+    final targets = raw
+        .split(RegExp(r'[,\\s]+'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+    if (targets.isEmpty) throw ArgumentError('Enter at least one IPv4 target.');
+    for (final host in targets) {
+      final address = InternetAddress.tryParse(host);
+      if (address == null || address.type != InternetAddressType.IPv4) {
+        throw ArgumentError('Use IPv4 addresses only: $host');
+      }
+    }
+    return targets;
+  }
+
   Future<Map<String, dynamic>> run(
     List<String> rawTargets, {
     int minimum = 576,
@@ -130,14 +148,7 @@ class MtuFinder {
       throw ArgumentError('MTU range must satisfy 576 <= min < max <= 1500.');
     }
     if (margin < 0 || margin >= maximum) throw ArgumentError('Invalid safety margin.');
-    final targets = rawTargets.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
-    if (targets.isEmpty) throw ArgumentError('Enter at least one IPv4 target.');
-    for (final host in targets) {
-      final address = InternetAddress.tryParse(host);
-      if (address == null || address.type != InternetAddressType.IPv4) {
-        throw ArgumentError('Use IPv4 addresses only: $host');
-      }
-    }
+    final targets = parseTargets(rawTargets.join(' '));
 
     final mtuResults = <Map<String, dynamic>>[];
     final stabilityResults = <Map<String, dynamic>>[];
