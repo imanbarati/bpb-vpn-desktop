@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -126,7 +127,7 @@ class SettingsPage extends StatelessWidget {
                 icon: Symbols.counter_6_rounded,
                 subtitle: 'Enable it based on your ISP',
               ),
-              const SwitchPref(
+              if (!Platform.isWindows) const SwitchPref(
                 'device.lanSharing.enabled',
                 'Allow LAN connections',
                 icon: Symbols.lan_rounded,
@@ -166,14 +167,14 @@ class SettingsPage extends StatelessWidget {
                       )
                     : const SizedBox.shrink(),
               ),
-              const IntPref(
+              if (!Platform.isWindows) const IntPref(
                 'device.mtu',
                 'VPN MTU',
                 icon: Symbols.straighten_rounded,
                 min: 1280,
                 max: 9000,
               ),
-              ListTile(
+              if (!Platform.isWindows) ListTile(
                 leading: const Icon(Symbols.apps_rounded),
                 title: const Text('Per-app proxy'),
                 subtitle: Text(switch (d.perAppMode) {
