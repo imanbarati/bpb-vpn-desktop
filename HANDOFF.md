@@ -153,8 +153,9 @@ windows-port/         notes/scratch for the port (delete when done)
 - Windows Flutter runner scaffolding is generated in CI; Android source files remain unchanged.
 - Windows v1 now has an initial Dart controller path for Xray **proxy mode**: it launches the bundled `xray.exe`, waits for the local mixed inbound, snapshots WinINet proxy values, applies the local proxy, and restores the previous values on disconnect or next app startup. A stale PID marker is used to terminate an orphaned Xray process during recovery.
 - The Windows Xray executable is built from the repository's pinned `xray/` Go module and staged with geo databases by the workflow.
-- This is still a **preview, not a release-ready VPN client**. The controller has not yet been proven by a successful CI run or manual Windows test. TUN/VPN, Psiphon, Tor, Browser Dialer, tray integration, installer, and full Windows UI gating remain unfinished. Some Android-only utility methods still need explicit Windows handling.
-- Do not create a public release until the Windows build and tests pass and proxy connect/disconnect/recovery are manually tested on a real Windows machine.
+- A regular (non-prerelease) Windows x64 GitHub Release is published automatically after successful pushes to `main`; `windows-v*` tags are also supported. CI has passed Dart analysis/tests and a Windows build on earlier revisions. The latest lifecycle and profile-migration changes are being validated by the current queued release workflow.
+- The application remains an **experimental proxy-mode client**, not a full VPN/TUN implementation. A real Windows 10/11 test of connect/disconnect, failed startup, PAC restoration, and forced process termination is still outstanding. TUN/Wintun, Psiphon, Tor, Browser Dialer, tray integration, and installer are not implemented.
+- Do not describe the Windows client as fully validated or as a full-device VPN until those real-machine tests and the separate TUN implementation are complete.
 
 ## Progress log
 
@@ -176,3 +177,6 @@ windows-port/         notes/scratch for the port (delete when done)
 
 
 - 2026-11-07 — Windows startup now normalizes the saved device profile to supported capabilities: proxy mode is selected automatically, unsupported Psiphon/Tor connection types and exits are removed from the active Windows profile, and Browser Dialer is reset to the standard Worker variant. The Windows connection UI now omits unsupported Psiphon/Tor exit choices and Browser Dialer. The portable archive is now named `BPB-VPN-Windows-x64.zip`; both release and preview workflows use that filename.
+
+
+- 2026-11-07 — Added a tested `DeviceSettings.forWindowsProxyMode()` migration. It selects Proxy mode, removes unsupported Psiphon/Tor connection and exit choices, resets Browser Dialer and Domain Fronting, disables LAN sharing and per-app routing, and preserves supported chain-proxy choices. The home/settings UI now hides Windows-unsupported options. Added a unit test covering this migration. The Windows release and preview workflows now package the portable build as `BPB-VPN-Windows-x64.zip`. Latest commit: `1ec8eb68b7ad00f5dd3e2498120c1e7b4f0b80ad`; its release workflow is queued behind the prior Windows build.
