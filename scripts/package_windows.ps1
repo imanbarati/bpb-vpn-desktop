@@ -4,7 +4,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $buildRoot = Join-Path $repoRoot "build\windows\x64\runner\Release"
 $distRoot = Join-Path $repoRoot "dist"
 $stageRoot = Join-Path $distRoot "BPB-VPN-Windows-x64"
-$zipPath = Join-Path $distRoot "BPB-VPN-Windows-x64-preview.zip"
+$zipPath = Join-Path $distRoot "BPB-VPN-Windows-x64.zip"
 
 if (-not (Test-Path (Join-Path $buildRoot "bpb.exe"))) {
     throw "Flutter Windows executable is missing: $buildRoot\bpb.exe"
