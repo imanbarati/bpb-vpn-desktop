@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build-and-release:
-    name: Build and publish Windows x64 preview
+    name: Build and publish Windows x64 release
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -99,17 +99,17 @@ jobs:
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/windows-v') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          name: BPB VPN ${{ github.ref_name }} — Windows x64 Preview
+          name: BPB VPN ${{ github.ref_name }} — Windows x64
           tag_name: ${{ startsWith(github.ref, 'refs/tags/windows-v') && github.ref_name || format('windows-main-{0}-{1}', github.run_number, github.sha) }}
           target_commitish: ${{ github.sha }}
-          prerelease: true
+          prerelease: false
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
             dist/BPB-VPN-Windows-x64-preview.zip
             dist/SHA256SUMS.txt
           body: |
-            **Experimental Windows proxy-mode preview. Not a full VPN/TUN release.**
+            **Windows x64 release. Experimental proxy-mode build; not a full VPN/TUN implementation.**
 
             - Windows 10/11 x64.
             - Uses the bundled Xray core and current-user Windows system proxy.
