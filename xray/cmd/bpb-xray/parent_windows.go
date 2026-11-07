@@ -55,8 +55,14 @@ func restoreProxyBackup(path string) error {
 		} else {
 			command = exec.Command("reg.exe", "delete", winInetSettingsKey, "/v", name, "/f")
 		}
-		if output, err := command.CombinedOutput(); err != nil && ok {
-			return fmt.Errorf("restore %s: %w: %s", name, err, output)
+		if output, err := command.CombinedOutput(); err != nil {
+			if ok {
+				return fmt.Errorf("restore %s: %w: %s", name, err, output)
+			}
+			// A missing value is expected; an existing value that cannot be deleted is not.
+			if queryOutput, queryErr := exec.Command("reg.exe", "query", winInetSettingsKey, "/v", name).CombinedOutput(); queryErr == nil {
+				return fmt.Errorf("remove %s: %w: %s", name, err, queryOutput)
+			}
 		}
 	}
 	refresh := `$src = @"
