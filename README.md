@@ -32,7 +32,26 @@ test. Do not treat the current branch as a working release until those checks pa
 The first usable Windows release is intended to be **proxy mode only**, without administrator
 rights. TUN mode is a later milestone.
 
-The Windows client remains an experimental system-proxy client, not a full-device VPN. A Path MTU Finder is available under Settings on Windows; it reports an estimate only and does not change network settings. Settings also includes an Iran routing preset based on the existing bundled geo rules.
+The Windows client remains an experimental system-proxy client, not a full-device VPN. A Path
+MTU Finder is available under Settings on Windows; it reports an estimate only and does not
+change network settings. Settings also includes an Iran routing preset based on the existing
+bundled geo rules.
+
+## MLM VPN component port
+
+The proposed first component from [MLM VPN](https://github.com/mlmvpn/mlmvpn_android) is its
+**FLUX adaptive route-selection engine**, reimplemented as a Dart component for BPB's existing
+Windows proxy runtime. This is a staged port plan, not an imported Android engine: the upstream
+TUN service, custom Xray build, Android UI, MAE, and native Android libraries are not Windows
+drop-ins.
+
+- [FLUX component port plan](components/mlmvpn-flux/PORTING.md)
+- [Upstream FLUX architecture](https://github.com/mlmvpn/mlmvpn_android/blob/main/FLUX_ARCHITECTURE.md)
+- [Upstream implementation state](https://github.com/mlmvpn/mlmvpn_android/blob/main/FLUX_IMPLEMENTATION_STATE.md)
+
+No MLM VPN source or binaries have been copied yet. FLUX will remain opt-in and proxy-mode-only
+until its parser, route probes, scoring, failover, and recovery have Windows tests. Any derivative
+code must retain GPL-3.0 compatibility and visible credit to the original developer, **mlmvpn**.
 
 ## Optional companion tools
 
