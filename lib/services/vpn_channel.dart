@@ -430,6 +430,7 @@ class _WindowsVpnBackend {
 
   static Future<void> _refresh() async {
     const script = r'''
+$ErrorActionPreference = 'Stop'
 $src = @"
 using System;
 using System.Runtime.InteropServices;
@@ -439,10 +440,13 @@ public static class BpbWinInet {
 }
 "@
 Add-Type -TypeDefinition $src
-[BpbWinInet]::InternetSetOption([IntPtr]::Zero,39,[IntPtr]::Zero,0) | Out-Null
-[BpbWinInet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0) | Out-Null
+if (-not [BpbWinInet]::InternetSetOption([IntPtr]::Zero,39,[IntPtr]::Zero,0)) { throw 'INTERNET_OPTION_SETTINGS_CHANGED failed' }
+if (-not [BpbWinInet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0)) { throw 'INTERNET_OPTION_REFRESH failed' }
 ''';
-    await Process.run('powershell.exe', ['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script]);
+    final result = await Process.run('powershell.exe', ['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script]);
+    if (result.exitCode != 0) {
+      throw StateError('Could not refresh Windows proxy settings: \${result.stderr} \${result.stdout}');
+    }
   }
 
   static Future<void> _applyProxy() async {
