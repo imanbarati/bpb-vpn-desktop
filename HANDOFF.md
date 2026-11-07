@@ -241,3 +241,16 @@ The latest feature commits pushed to `main` are:
 - `8a284d5a5309d012f26881eabfc9cfcae319b712` — README feature status.
 
 Latest known `main` HEAD at the time of this handoff update: `8a284d5a5309d012f26881eabfc9cfcae319b712`. The GitHub Actions run for this exact HEAD has **not been verified here**. The previous green run does not validate the new MTU UI/service or Iran preset. First task for the next agent: inspect the latest `windows-release.yml` run for HEAD, fix any Dart analyzer/test/build failure, and verify that the workflow publishes a regular release with the ZIP and checksum.
+
+
+### MTU validation follow-up — 2026-11-07
+
+The MTU implementation received a pure target parser and unit tests:
+- `734dab76dc015fcf69a809b286b4b431eafb2826` — extract IPv4 parser.
+- `54190e7a91f0e1460bb7310f9d9adcf3f965b59d` — use shared parser in the page.
+- `0b820fd271939b0d83af6c448b13da2cf87da84c` — add parser tests.
+- `a6cfa0e98d78de350f7d0fd451c78777b7f167e6` — correct the whitespace regex.
+- `4d541d4b6e3a3e98333db017f38cd556dafbeeea` — correct newline test input.
+- `c830be0e1fd68791a09f7d224343d51ca84d2311` — wire the UI to the shared parser.
+
+The earlier README/handoff correction commits are `2ec73fbaede0c0f4c821b7912f3c4297f647804d` and `e70077480790a58ab02450b5d276f280abd7706e`. The latter records the feature head before the parser follow-up. Current code is newer than that recorded head; inspect latest commits and Actions before release. No claim of CI success is made for these follow-up changes.
