@@ -81,16 +81,16 @@ jobs:
       - name: Generate SHA-256 checksum
         shell: pwsh
         run: |
-          $zip = "dist/BPB-VPN-Windows-x64-preview.zip"
+          $zip = "dist/BPB-VPN-Windows-x64.zip"
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-          "$hash  BPB-VPN-Windows-x64-preview.zip" | Set-Content "dist/SHA256SUMS.txt" -Encoding ascii
+          "$hash  BPB-VPN-Windows-x64.zip" | Set-Content "dist/SHA256SUMS.txt" -Encoding ascii
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: BPB-VPN-Windows-x64
           path: |
-            dist/BPB-VPN-Windows-x64-preview.zip
+            dist/BPB-VPN-Windows-x64.zip
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
@@ -106,7 +106,7 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            dist/BPB-VPN-Windows-x64-preview.zip
+            dist/BPB-VPN-Windows-x64.zip
             dist/SHA256SUMS.txt
           body: |
             **Windows x64 release. Experimental proxy-mode build; not a full VPN/TUN implementation.**
