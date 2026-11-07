@@ -20,6 +20,7 @@ import 'per_app_page.dart';
 import 'prefs.dart';
 import 'routing_page.dart';
 import 'tor_bridges_page.dart';
+import 'mtu_finder_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -82,6 +83,32 @@ class SettingsPage extends StatelessWidget {
           const SectionHeader('Global'),
           SettingsCard(
             children: [
+              if (Platform.isWindows)
+                ListTile(
+                  leading: const Icon(Symbols.network_check_rounded),
+                  title: const Text('Path MTU Finder'),
+                  subtitle: const Text('Measure IPv4 path MTU, packet loss and a conservative Xray MTU suggestion'),
+                  trailing: const Icon(Symbols.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const MtuFinderPage()),
+                  ),
+                ),
+              ListTile(
+                leading: const Icon(Symbols.public_rounded),
+                title: const Text('Apply Iran routing preset'),
+                subtitle: const Text('Direct Iran traffic; block ads, malware, phishing and cryptominers'),
+                trailing: const Icon(Symbols.chevron_right_rounded),
+                onTap: () {
+                  state.write('routing.bypass.presets.iran', true);
+                  state.write('routing.block.presets.ads', true);
+                  state.write('routing.block.presets.malware', true);
+                  state.write('routing.block.presets.phishing', true);
+                  state.write('routing.block.presets.cryptominers', true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Iran routing preset applied. Reconnect to apply changes.')),
+                  );
+                },
+              ),
               ListTile(
                 leading: const Icon(Symbols.link_rounded),
                 title: const Text('Chain proxies'),
