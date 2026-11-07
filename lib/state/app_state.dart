@@ -304,6 +304,11 @@ class AppState extends ChangeNotifier {
     _stored = Profile.fromJson(_decodeMap(_prefs.getString(_kProfile)))
         .updated('vless', null);
     device = DeviceSettings.fromJson(_decodeMap(_prefs.getString(_kDevice)));
+    // Windows v1 only supports the local system-proxy path; never default into TUN mode.
+    if (Platform.isWindows && device.appMode != AppMode.proxy) {
+      device = device.updated('appMode', AppMode.proxy);
+      await _prefs.setString(_kDevice, jsonEncode(device.toSparseJson()));
+    }
     if (_prefs.containsKey('configOverrides')) {
       await _prefs.remove('configOverrides');
     }
