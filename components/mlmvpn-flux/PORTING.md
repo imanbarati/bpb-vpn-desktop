@@ -14,6 +14,10 @@ Port **FLUX only**, as an independently testable component under `lib/services/m
 
 FLUX is the best first candidate because its upstream architecture separates a pure-Kotlin control plane from an Xray data plane. The control plane is being reimplemented in Dart for this Flutter application. This is a port, not a binary-compatible reuse of Kotlin code.
 
+## Related Windows project — not a source donor
+
+The upstream maintainer also publishes [MLMVPN for Windows](https://github.com/mlmvpn/mlmvpn_windows), a separate Electron application with its own engine managers and Windows networking implementation. It is useful as a reference for Windows-specific operational concerns, but its repository uses the **MLMVPN Attribution License 1.0**, which explicitly describes itself as source-available and not OSI-approved, and restricts sublicensing. Do not copy or vendor its source into this GPL-3.0 BPB repository without a separate written licensing arrangement. This component port is based on the Android repository's GPL-3.0 project and independently authored Dart code.
+
 ## Why a direct copy will not work
 
 The upstream implementation currently assumes:
