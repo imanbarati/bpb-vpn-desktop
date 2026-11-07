@@ -26,7 +26,7 @@ The upstream implementation currently assumes:
 - custom Xray features such as the burst observatory and the project's fragment behavior;
 - Android network identity, lifecycle, storage, and connectivity callbacks.
 
-BPB Windows currently exposes a local Xray mixed proxy and WinINet system-proxy control only. It does not provide TUN, Wintun, per-app routing, or the upstream custom Xray core. Therefore the Windows component must have a **proxy-mode profile** and must not claim TUN-level leak protection or packet-level failover.
+BPB currently pins Xray Go module `github.com/xtls/xray-core v1.260327.1-0.20261031132019-a4a3dff5b20c` in `xray/go.mod`, and Windows exposes a local Xray mixed proxy plus WinINet system-proxy control. The matching-looking version string is not proof that every Android FLUX custom feature is present: the repository does not currently vendor the upstream custom core source, so each required JSON field and runtime behavior still needs an executable compatibility test. It does not provide TUN, Wintun, per-app routing, or the upstream custom Xray core. Therefore the Windows component must have a **proxy-mode profile** and must not claim TUN-level leak protection or packet-level failover.
 
 ## Component boundary
 
