@@ -2,6 +2,8 @@ name: Windows x64 release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "windows-v*"
   workflow_dispatch:
@@ -94,11 +96,12 @@ jobs:
           retention-days: 30
 
       - name: Publish GitHub pre-release
-        if: startsWith(github.ref, 'refs/tags/windows-v')
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/windows-v') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           name: BPB VPN ${{ github.ref_name }} — Windows x64 Preview
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/windows-v') && github.ref_name || format('windows-main-{0}-{1}', github.run_number, github.sha) }}
+          target_commitish: ${{ github.sha }}
           prerelease: true
           generate_release_notes: true
           fail_on_unmatched_files: true
