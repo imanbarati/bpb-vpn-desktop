@@ -11,10 +11,11 @@ milestone:
 - Launch the pinned Xray core as a child process using the existing JSON config builder.
 - Require the loopback mixed inbound on port 10808 and wait for it to accept connections.
 - Apply the current-user WinINet system proxy only after Xray is listening.
-- Snapshot the prior ProxyEnable, ProxyServer, and ProxyOverride registry values.
+- Snapshot the prior ProxyEnable, ProxyServer, ProxyOverride, AutoConfigURL (PAC), and AutoDetect registry values.
+- Disable PAC and automatic proxy discovery while connected, then restore the user's previous values on disconnect or crash recovery.
 - Restore those values on disconnect, Xray exit, or recovery during the next app launch.
 - Record the child PID so an orphaned Xray process can be terminated during recovery.
-- Reject TUN, Psiphon, Tor, and Browser Dialer modes with an explicit unsupported-mode error.
+- Start in Proxy mode automatically on Windows; hide VPN/TUN, Psiphon, Tor, and Browser Dialer choices that the Windows backend cannot run. The backend still rejects unsupported requests defensively.
 
 This implementation is experimental. It has not yet passed a complete Windows CI build or a
 manual test on a real Windows machine. The proxy restore path must be exercised before release.
