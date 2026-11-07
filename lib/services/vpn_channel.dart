@@ -266,7 +266,15 @@ class _WindowsVpnBackend {
     return dir;
   }
 
-  static Future<void> recover() => _recovery ??= _recover();
+  static Future<void> recover() async {
+    final pending = _recovery ??= _recover();
+    try {
+      await pending;
+    } catch (_) {
+      _recovery = null;
+      rethrow;
+    }
+  }
 
   static Future<void> _recover() async {
     if (_process != null) return;
@@ -289,6 +297,7 @@ class _WindowsVpnBackend {
       await _restoreProxy();
     } catch (error) {
       _append('Windows proxy restore failed: $error\\n');
+      rethrow; // Never start a new session while an old proxy backup is unresolved.
     }
   }
 
