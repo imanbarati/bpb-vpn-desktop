@@ -180,3 +180,48 @@ windows-port/         notes/scratch for the port (delete when done)
 
 
 - 2026-11-07 — Added a tested `DeviceSettings.forWindowsProxyMode()` migration. It selects Proxy mode, removes unsupported Psiphon/Tor connection and exit choices, resets Browser Dialer and Domain Fronting, disables LAN sharing and per-app routing, and preserves supported chain-proxy choices. The home/settings UI now hides Windows-unsupported options. Added a unit test covering this migration. The Windows release and preview workflows now package the portable build as `BPB-VPN-Windows-x64.zip`. Latest commit: `1ec8eb68b7ad00f5dd3e2498120c1e7b4f0b80ad`; its release workflow is queued behind the prior Windows build.
+
+
+## 7. External feature references reviewed (2026-11-07)
+
+The owner requested feature work based on these projects:
+
+- <https://github.com/mado3ein/Mtu-Finder>
+- <https://github.com/mrchatam/incy-iran-routing>
+- <https://github.com/sartoopjj/thefeed>
+- <https://github.com/dashbehrad/behradNG>
+
+### Implemented in this repository
+
+1. **Windows Path MTU Finder** — added `lib/services/mtu_finder.dart` and `lib/ui/mtu_finder_page.dart`, exposed from Settings on Windows. It uses Windows `ping.exe` with IPv4 Don't Fragment probes, binary-searches the path MTU, runs packet-loss/stability checks and a small benchmark, calculates a safety-margin recommendation, and can copy or save a JSON report to `%LOCALAPPDATA%\\BPB-VPN\\diagnostics\\mtu_result.json`. It never changes Windows interface settings. It only measures the ordinary IPv4 route; it does not measure tunnel overhead. Since Windows v1 is currently system-proxy mode without a TUN adapter, the recommended value is diagnostic and is not automatically applied.
+   - The reference MTU-Finder repository declares no license in its README. No source file was copied; this is an independent Dart implementation of the documented behavior. Re-check licensing before importing any of its code.
+   - ICMP/DF packets can be filtered or rate-limited. A failed probe is not proof that a path MTU is smaller; test multiple targets and treat the output as an estimate.
+
+2. **Iran routing preset** — added a Settings action that enables the existing `iran` direct-routing preset and existing `ads`, `malware`, `phishing`, and `cryptominers` block presets. These map to the repository's already-supported Chocolate4U geo assets and Xray routing rules. It does not import the INCY JSON schema or invent unsupported GeoIP tags such as provider-specific CDN identifiers. The user must reconnect for the new rules to take effect.
+   - Reference: <https://github.com/mrchatam/incy-iran-routing>. The source profile uses `geosite:category-ir`, `geoip:ir`, private IPs, and provider-specific GeoIP tags. This app currently maps its Iran preset to its own bundled ruleset tags (`geosite:ir` / `geoip:ir`); confirm the exact contents of the pinned geo database before expanding tags.
+
+### Reviewed but deliberately not merged
+
+3. **thefeed** — this is a separate DNS-transport feed reader / Telegram and X reader / E2E messenger with its own server, resolver bank, encrypted protocol, and client UI. It is not a VPN transport or Xray outbound. Embedding its server/client into BPB would add a separate product and security boundary, not a feature of the Windows VPN. It is MIT-licensed, but no code or dependency has been copied. If the owner wants it, develop a separately scoped optional companion client or documented external integration; do not silently bundle a DNS tunnel or server into the VPN.
+   - Reference: <https://github.com/sartoopjj/thefeed>.
+
+4. **behradNG** — existing BPB chain support already covers common proxy protocols including VLESS, VMess, Shadowsocks, Trojan, Hysteria2 and WireGuard. The additional Aether transport in the reference is tied to Android native components and is documented there as AGPL-3.0-only; its ABI/page-size/HEV requirements do not make it a drop-in Windows executable. Saturn is a separate custom protocol/server/provisioner with its own crypto, framing, active-probe behavior, and DPI mutation engine. The README's claims are not a substitute for a source-level protocol/security audit or Windows transport implementation. No Aether/Saturn code has been copied, no new transport is advertised, and no unverified custom crypto has been introduced.
+   - References: <https://github.com/dashbehrad/behradNG>, <https://github.com/CluvexStudio/Aether>, <https://github.com/DrAlanK/Alan-RIP-Dpi-Windows>.
+   - Aether requires a separate AGPL compliance and native-port review. Saturn requires an independent protocol threat model, crypto review, interoperability vectors, and a Windows client/server proof-of-concept before any production integration.
+
+### Required next-agent validation and follow-up
+
+- Run the latest Windows release workflow and inspect **Analyze Dart source**, **Run tests**, **Build Windows x64**, **Build Xray**, **Package ZIP**, **checksum**, and **Publish regular GitHub release**. Do not claim these new commits pass until the latest HEAD run is green.
+- Run `flutter analyze` and `flutter test` on the new MTU page/service. Add focused tests for MTU range validation, IPv4 target validation, recommendation margin, and JSON output. The current implementation has not been executed on Windows in this session.
+- On a real Windows 10/11 machine, verify `ping.exe -f` behavior, timeout cancellation, packet-loss reporting, save path, and clipboard actions. Test at least two independent IPv4 targets. Confirm the UI remains responsive and that cancellation/closing the page does not leave a ping process behind.
+- The MTU tool currently has no cancel button; add cancellation and a maximum total runtime before calling it production-ready.
+- Verify the Iran preset against the actual bundled `geoip.dat` / `geosite.dat` version. Confirm precedence (block → direct bypass → proxy catch-all), local DNS behavior, and that no domestic/private destinations leak through a proxy unexpectedly.
+- Do not automatically set DNS to public resolvers: the INCY profile's DNS choices are not universally suitable, and this app's DNS pipeline has separate semantics. Keep the preset limited to existing routing toggles until DNS behavior is audited.
+- For thefeed, prefer a separate companion repository/app or an explicit user-launched external link. Do not embed thefeed's server, DNS tunnel, messenger, Telegram login, or feed scraping in the VPN process.
+- For Aether/Saturn, first inspect source and licenses, create an isolated branch and protocol design, and do not merge until Windows native dependencies, build reproducibility, crypto review, and end-to-end tests are available.
+- Preserve GPL-3.0 project obligations and all third-party notices. Never copy code from the MTU-Finder repository until a license is added/confirmed.
+
+## Progress log — additional references
+
+- 2026-11-07 — Reviewed MTU-Finder, INCY Iran routing, thefeed, and behradNG. Added an independent Windows/Dart path-MTU diagnostic page with DF binary search, stability/packet-loss checks, benchmark, safety margin, JSON copy/save, and a Settings entry. Added a one-tap Iran routing preset using only the Xray geo tags and rule presets already supported by this app. No Windows build/test or real-machine probe has yet been verified for these new commits.
+- 2026-11-07 — Deliberately did not merge thefeed's independent DNS-feed/messenger product or behradNG's Android-native Aether/custom Saturn transport. TheFeed is not an Xray transport; Aether is Android-native and AGPL-3.0-only; Saturn needs a separate protocol and cryptographic audit plus a Windows implementation. These boundaries and next-agent tasks are documented above.
