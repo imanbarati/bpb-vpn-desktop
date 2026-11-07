@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -41,11 +43,17 @@ class ConnectionCard extends StatelessWidget {
     final exit = state.exitNode;
     // The Psiphon and Tor types have no exit node to choose: only the region can change.
     final hasExitNode = state.mode != ConnectionMode.psiphon && state.mode != ConnectionMode.tor;
-    final nodes = switch (state.mode) {
-      ConnectionMode.serverless => [ExitNode.worker, ExitNode.psiphon, ExitNode.tor],
-      // The chain proxy is an exit node once there's one the type can carry (Settings → Chain proxies).
-      _ => [for (final n in ExitNode.values) if (n != ExitNode.chain || state.usableChains.isNotEmpty) n],
-    };
+    final nodes = Platform.isWindows
+        ? [
+            ExitNode.worker,
+            if (state.mode != ConnectionMode.serverless && state.usableChains.isNotEmpty)
+              ExitNode.chain,
+          ]
+        : switch (state.mode) {
+            ConnectionMode.serverless => [ExitNode.worker, ExitNode.psiphon, ExitNode.tor],
+            // The chain proxy is an exit node once there's one the type can carry (Settings → Chain proxies).
+            _ => [for (final n in ExitNode.values) if (n != ExitNode.chain || state.usableChains.isNotEmpty) n],
+          };
     final chain = state.exitChain;
 
     return Card(
@@ -232,7 +240,9 @@ class _ModeSelector extends StatelessWidget {
       );
     }
     return ChipMenu(
-      values: ConnectionVariant.of(state.mode),
+      values: Platform.isWindows
+          ? ConnectionVariant.of(state.mode).where((v) => v != ConnectionVariant.browserDialer).toList()
+          : ConnectionVariant.of(state.mode),
       selected: state.variant,
       label: (v) => v.label(state.mode),
       onSelected: state.setVariant,
