@@ -27,7 +27,7 @@ class _MtuFinderPageState extends State<MtuFinderPage> {
   Future<void> _run() async {
     setState(() { _busy = true; _error = null; _report = null; });
     try {
-      final report = await const MtuFinder().run(_targets.text.split(RegExp(r'[,\s]+')));
+      final report = await const MtuFinder().run(MtuFinder.parseTargets(_targets.text));
       if (mounted) setState(() => _report = report);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
