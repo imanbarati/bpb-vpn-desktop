@@ -1143,6 +1143,37 @@ class DeviceSettings {
   DeviceSettings updated(String path, Object? value) =>
       DeviceSettings.fromJson(writePath(toJson(), path, value));
 
+  /// Removes Android-only choices while keeping portable Windows proxy settings.
+  DeviceSettings forWindowsProxyMode() {
+    var next = updated('appMode', AppMode.proxy.name);
+    if (next.connectionType == 'psiphon' || next.connectionType == 'tor') {
+      next = next.updated('connection.type', 'worker');
+    }
+    if (next.workerVariant == 'browserDialer') {
+      next = next.updated('connection.workerVariant', 'normal');
+    }
+    if (next.serverlessMode == 'domainFronting') {
+      next = next.updated('connection.serverlessMode', 'fragment');
+    }
+    if (next.lanSharing) {
+      next = next.updated('lanSharing.enabled', false);
+    }
+    if (next.perAppMode != PerAppMode.off || next.perAppApps.isNotEmpty) {
+      next = next
+          .updated('perAppProxy.mode', PerAppMode.off.name)
+          .updated('perAppProxy.apps', <String>[]);
+    }
+    if (next.exitNode == ExitNode.psiphon || next.exitNode == ExitNode.tor) {
+      next = next.updated('exit.node', ExitNode.worker.name);
+    }
+    final supportedExits = {
+      for (final entry in next.exitNodes.entries)
+        if (entry.value != ExitNode.psiphon && entry.value != ExitNode.tor)
+          entry.key: entry.value.name,
+    };
+    return next.updated('exit.nodes', supportedExits);
+  }
+
   /// Login for the local proxy: only with LAN sharing on and both fields set.
   ({String user, String pass})? get lanAuth {
     final user = lanUsername, pass = lanPassword;
