@@ -37,21 +37,24 @@ Sources:
 ## Work completed
 
 - Added `components/mlmvpn-flux/PORTING.md` with component boundaries, package layout, phase plan, security criteria, attribution, and explicit exclusions.
-- Linked the port plan from root README.
-- No MLM VPN code, binaries, public node lists, or Android dependencies have been copied.
-- No runtime feature has been added; no CI/build/test claim is made for FLUX.
+- Added `lib/services/mlm_flux/flux_route.dart`: candidate/metrics/score data types, weighted score breakdown, and 15% switch hysteresis.
+- Added `lib/services/mlm_flux/flux_circuit_breaker.dart`: three-failure threshold and exponential cooldown capped at six hours.
+- Added `test/mlm_flux_test.dart` for scoring, hysteresis, candidate identity, breaker opening, cooldown, and reset.
+- Linked the port plan from root README and documented the decision in `docs/EXTERNAL-INTEGRATIONS.md`.
+- No MLM VPN source files, native binaries, Android dependencies, or public node lists have been copied.
+- The Dart primitives are not connected to profile parsing, candidate probing, Xray config generation, connection UI, or WinINet. Tests were authored but not run in this session.
 
 ## Next agent — exact sequence
 
 1. Inspect BPB `xray/go.mod`, `xray/cmd/bpb-xray`, config generation, and the current mixed inbound. Record the exact Xray version and supported outbound/config features.
-2. Inspect BPB `lib/services/proxy_uri.dart` and `lib/services/xray_config.dart`. Define a matrix of supported URI types and config capabilities; do not invent support for Hysteria2 or custom FLUX features.
-3. Create a small Dart package under `lib/services/mlm_flux/` for data models, redacted stable candidate IDs, scoring, circuit breaker, and versioned state. Keep it pure Dart and add deterministic unit tests first.
-4. Add strict parser adapters using BPB's existing parser rather than duplicating URI parsing. Never store/log full profile URIs.
+2. Inspect BPB `lib/services/proxy_uri.dart` and `lib/services/xray_config.dart`. Define a matrix of supported URI types and config capabilities; do not invent support for unsupported core fields.
+3. Run `flutter analyze` and `flutter test`; fix any type or lint errors in the new primitives.
+4. Add strict parser adapters using BPB's existing `ProxyUri.parse` rather than duplicating URI parsing. Never store/log full profile URIs.
 5. Implement bounded TCP/TLS reachability probes and explicit candidate-to-local-port mapping. A handshake is not proof of a working route.
 6. Implement an actual HTTP request through each candidate's local proxy and verify the observed exit before marking a route proven.
 7. Only then design Xray proxy-mode config compilation and integration with the existing Windows process controller.
 8. Add rollback tests: failed FLUX start must leave the previous BPB proxy session intact; disconnect must continue using the existing WinINet restore/recovery path.
-9. Run Flutter analysis/tests and Windows CI. A real Windows 10/11 test remains mandatory before release claims.
+9. Run Windows CI. A real Windows 10/11 test remains mandatory before release claims.
 
 ## Explicitly do not do
 
