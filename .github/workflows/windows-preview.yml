@@ -65,6 +65,10 @@ jobs:
         shell: bash
         run: bash scripts/fetch_tor_bridges.sh
 
+      - name: Fetch Xray geo databases required by tests and runtime
+        shell: bash
+        run: bash scripts/fetch_geo.sh
+
       - name: Resolve packages
         run: flutter pub get
 
@@ -76,10 +80,6 @@ jobs:
 
       - name: Build Windows x64 preview
         run: flutter build windows --release
-
-      - name: Fetch Xray geo databases
-        shell: bash
-        run: bash scripts/fetch_geo.sh
 
       - name: Build and stage Xray for Windows
         shell: pwsh
