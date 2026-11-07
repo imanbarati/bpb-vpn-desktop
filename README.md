@@ -34,7 +34,7 @@ rights. TUN mode is a later milestone.
 
 The Windows client remains an experimental system-proxy client, not a full-device VPN. A Path MTU Finder is available under Settings on Windows; it reports an estimate only and does not change network settings. Settings also includes an Iran routing preset based on the existing bundled geo rules.
 
-## Build preview locally
+## Build Windows locally
 
 Requirements: Windows 10/11 x64, Visual Studio 2022 with the Desktop development with C++ workload,
 Flutter stable, Go matching xray/go.mod, Node.js, and Git.
@@ -59,9 +59,7 @@ bash scripts/fetch_geo.sh
 The app is written under build/windows/x64/runner/Release/. The staged Xray executable and
 geo databases are placed in its data/ subdirectory.
 
-The GitHub Actions workflow uploads a short-lived preview artifact. It does not create a GitHub
-Release. A successful compile alone does not prove that proxy routing and restoration work on a
-real Windows machine.
+The `.github/workflows/windows-release.yml` workflow publishes a regular (non-prerelease) GitHub Release after each successful push to `main` and also supports `windows-v*` tags. The portable archive is `BPB-VPN-Windows-x64.zip` with `SHA256SUMS.txt`. A successful compile alone does not prove that proxy routing and restoration work on a real Windows machine.
 
 ## Safety and project notes
 
