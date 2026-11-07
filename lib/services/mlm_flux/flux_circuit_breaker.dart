@@ -18,7 +18,7 @@ class FluxCircuitBreaker {
   Duration get currentCooldown {
     if (_consecutiveFailures < failureThreshold) return Duration.zero;
     final exponent = _consecutiveFailures - failureThreshold;
-    final multiplier = 1 << exponent.clamp(0, 20);
+    final multiplier = 1 << exponent.clamp(0, 20).toInt();
     final seconds = initialCooldown.inSeconds * multiplier;
     return Duration(seconds: seconds > maximumCooldown.inSeconds
         ? maximumCooldown.inSeconds
