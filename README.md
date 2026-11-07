@@ -26,9 +26,13 @@ test. Do not treat the current branch as a working release until those checks pa
 | Psiphon / Tor exits | Not implemented |
 | Browser Dialer | Not implemented |
 | Tray, installer, auto-start | Not implemented |
+| Windows path-MTU diagnostics | Implemented; real Windows validation pending |
+| Iran routing preset | Implemented using existing geo/routing rules; verify bundled geo data |
 
 The first usable Windows release is intended to be **proxy mode only**, without administrator
 rights. TUN mode is a later milestone.
+
+The Windows client remains an experimental system-proxy client, not a full-device VPN. A Path MTU Finder is available under Settings on Windows; it reports an estimate only and does not change network settings. Settings also includes an Iran routing preset based on the existing bundled geo rules.
 
 ## Build preview locally
 
