@@ -34,6 +34,20 @@ rights. TUN mode is a later milestone.
 
 The Windows client remains an experimental system-proxy client, not a full-device VPN. A Path MTU Finder is available under Settings on Windows; it reports an estimate only and does not change network settings. Settings also includes an Iran routing preset based on the existing bundled geo rules.
 
+## Optional companion tools
+
+BPB remains an Xray-based proxy/VPN client. For separate use cases, see
+[External integration decisions](docs/EXTERNAL-INTEGRATIONS.md):
+
+- [Shroudly](https://github.com/umutxyp/Shroudly/releases/latest) — standalone Windows
+  anti-DPI local proxy; disconnect BPB before starting it because both manage system proxy state.
+- [thefeed](https://github.com/sartoopjj/thefeed/releases/latest) — independent DNS-based feeds
+  and messenger, not a general VPN tunnel.
+- [behradNG](https://github.com/dashbehrad/behradNG) — standard supported Xray profile links may
+  be imported; its Aether and Saturn transports are not supported by BPB.
+
+These are companion tools, not bundled BPB components.
+
 ## Build Windows locally
 
 Requirements: Windows 10/11 x64, Visual Studio 2022 with the Desktop development with C++ workload,
