@@ -21,6 +21,34 @@ void main() {
     expect(redeployed.deployments.map((d) => d.name), ['wk', 'pg2']);
   });
 
+  test('Windows profile migration disables unsupported Android-only features', () {
+    const android = DeviceSettings(
+      appMode: AppMode.vpn,
+      connectionType: 'tor',
+      workerVariant: 'browserDialer',
+      serverlessMode: 'domainFronting',
+      lanSharing: true,
+      perAppMode: PerAppMode.include,
+      perAppApps: ['com.example.app'],
+      exitNode: ExitNode.psiphon,
+      exitNodes: {
+        'worker': ExitNode.chain,
+        'warp': ExitNode.tor,
+      },
+    );
+
+    final windows = android.forWindowsProxyMode();
+    expect(windows.appMode, AppMode.proxy);
+    expect(windows.connectionType, 'worker');
+    expect(windows.workerVariant, 'normal');
+    expect(windows.serverlessMode, 'fragment');
+    expect(windows.lanSharing, isFalse);
+    expect(windows.perAppMode, PerAppMode.off);
+    expect(windows.perAppApps, isEmpty);
+    expect(windows.exitNode, ExitNode.worker);
+    expect(windows.exitNodes, {'worker': ExitNode.chain});
+  });
+
   test('setup done survives the device settings JSON', () {
     expect(const DeviceSettings().setupDone, isFalse);
     expect(DeviceSettings.fromJson(const DeviceSettings().updated('setupDone', true).toJson()).setupDone, isTrue);
