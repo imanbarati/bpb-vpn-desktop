@@ -299,41 +299,61 @@ class _WindowsVpnBackend {
   }
 
   static Future<void> start({required Map<String, dynamic> config, required bool proxyOnly, required String? exit, required bool browserDialer}) async {
+    await recover();
     if (!proxyOnly) throw StateError('Windows preview supports Proxy mode only. VPN/TUN is not available yet.');
     if (exit != null || browserDialer) throw StateError('Psiphon, Tor, and Browser Dialer are not supported in this Windows preview.');
-    final ins = config['inbounds'];
-    if (ins is! List || !ins.any((v) => v is Map && v['tag'] == 'mixed-in' && v['port'] == _port)) {
-      throw StateError('Expected Xray mixed inbound on 127.0.0.1:$_port was not found.');
+    final inbounds = config['inbounds'];
+    if (inbounds is! List ||
+        !inbounds.any((value) =>
+            value is Map &&
+            value['tag'] == 'mixed-in' &&
+            value['port'] == _port &&
+            (value['listen'] == null ||
+                value['listen'] == '127.0.0.1' ||
+                value['listen'] == 'localhost'))) {
+      throw StateError('Expected a loopback Xray mixed inbound on 127.0.0.1:$_port was not found.');
     }
     if (_process != null) await stop();
+
     _emit(VpnStatus.connecting);
     _log = '';
     _stopping = false;
-    final installDir = File(Platform.resolvedExecutable).parent;
-    final runtime = Directory('${installDir.path}${Platform.pathSeparator}data');
-    final exe = File('${runtime.path}${Platform.pathSeparator}xray.exe');
-    if (!await exe.exists()) throw StateError('Missing ${exe.path}; rebuild the Windows package.');
-    final appDir = await _dataDir();
-    _appDir = appDir;
-    _runtimeDir = runtime;
-    final configFile = File('${appDir.path}${Platform.pathSeparator}config.json');
-    await configFile.writeAsString(jsonEncode(config), flush: true);
     try {
+      final installDir = File(Platform.resolvedExecutable).parent;
+      final runtime = Directory('${installDir.path}${Platform.pathSeparator}data');
+      final exe = File('${runtime.path}${Platform.pathSeparator}xray.exe');
+      if (!await exe.exists()) throw StateError('Missing ${exe.path}; rebuild the Windows package.');
+
+      final appDir = await _dataDir();
+      _appDir = appDir;
+      _runtimeDir = runtime;
+      final configFile = File('${appDir.path}${Platform.pathSeparator}config.json');
+      await configFile.writeAsString(jsonEncode(config), flush: true);
+
       final kernel32 = DynamicLibrary.open('kernel32.dll');
       final getCurrentProcessId = kernel32.lookupFunction<Uint32 Function(), int Function()>('GetCurrentProcessId');
       final parentPid = getCurrentProcessId();
-      final p = await Process.start(
+      final process = await Process.start(
         exe.path,
-        ['-config', configFile.path, '-asset-dir', runtime.path, '-parent-pid', '$parentPid', '-proxy-backup', '${appDir.path}${Platform.pathSeparator}proxy-backup.json'],
+        [
+          '-config', configFile.path,
+          '-asset-dir', runtime.path,
+          '-parent-pid', '$parentPid',
+          '-proxy-backup', '${appDir.path}${Platform.pathSeparator}proxy-backup.json',
+        ],
         workingDirectory: installDir.path,
       );
-      _process = p;
-      p.stdout.transform(utf8.decoder).listen(_append);
-      p.stderr.transform(utf8.decoder).listen(_append);
-      p.exitCode.then((code) async {
-        if (!identical(_process, p)) return;
+      _process = process;
+      process.stdout.transform(utf8.decoder).listen(_append);
+      process.stderr.transform(utf8.decoder).listen(_append);
+      process.exitCode.then((code) async {
+        if (!identical(_process, process)) return;
         _process = null;
-        await _restoreProxy();
+        try {
+          await _restoreProxy();
+        } catch (error) {
+          _append('Windows proxy restore after Xray exit failed: $error\\n');
+        }
         final dir = _appDir;
         if (dir != null) {
           final session = File('${dir.path}${Platform.pathSeparator}session.json');
@@ -342,9 +362,10 @@ class _WindowsVpnBackend {
         if (!_stopping) _emit(VpnStatus.disconnected, error: code == 0 ? null : 'Xray exited with code $code.');
         _stopping = false;
       });
+
       var ready = false;
       final until = DateTime.now().add(const Duration(seconds: 15));
-      while (DateTime.now().isBefore(until) && _process != null) {
+      while (DateTime.now().isBefore(until) && identical(_process, process)) {
         try {
           final socket = await Socket.connect('127.0.0.1', _port, timeout: const Duration(milliseconds: 400));
           socket.destroy();
@@ -355,14 +376,34 @@ class _WindowsVpnBackend {
         }
       }
       if (!ready) throw StateError('Xray did not open its proxy port. See the Xray log.');
+
       await _applyProxy();
       _emit(VpnStatus.connected, at: DateTime.now());
-    } catch (e) {
-      final p = _process;
+    } catch (error) {
+      final process = _process;
       _process = null;
-      p?.kill();
-      await _restoreProxy();
-      _emit(VpnStatus.disconnected, error: '$e');
+      if (process != null) {
+        process.kill();
+        try {
+          await process.exitCode.timeout(const Duration(seconds: 5));
+        } on TimeoutException {
+          process.kill(ProcessSignal.sigkill);
+        }
+      }
+      try {
+        await _restoreProxy();
+      } catch (restoreError) {
+        _append('Windows proxy rollback failed: $restoreError\\n');
+      }
+      final dir = _appDir;
+      if (dir != null) {
+        for (final name in ['config.json', 'session.json']) {
+          final file = File('${dir.path}${Platform.pathSeparator}$name');
+          if (await file.exists()) await file.delete();
+        }
+      }
+      _stopping = false;
+      _emit(VpnStatus.disconnected, error: '$error');
       rethrow;
     }
   }
@@ -374,7 +415,7 @@ class _WindowsVpnBackend {
 
   static Future<Map<String, Map<String, String>>> _snapshot() async {
     final values = <String, Map<String, String>>{};
-    for (final name in ['ProxyEnable', 'ProxyServer', 'ProxyOverride']) {
+    for (final name in ['ProxyEnable', 'ProxyServer', 'ProxyOverride', 'AutoConfigURL', 'AutoDetect']) {
       final r = await Process.run('reg.exe', ['query', _key, '/v', name]);
       final m = RegExp('^\\s*$name\\s+(REG_DWORD|REG_SZ)\\s+(.+?)\\s*\\r?\\n', multiLine: true, caseSensitive: false).firstMatch(r.stdout.toString());
       if (r.exitCode == 0 && m != null) values[name] = {'type': m.group(1)!, 'data': m.group(2)!};
@@ -413,6 +454,9 @@ Add-Type -TypeDefinition $src
       final session = File('${dir.path}${Platform.pathSeparator}session.json');
       await session.writeAsString(jsonEncode({'pid': process.pid}), flush: true);
     }
+    // Disable PAC and automatic discovery so WinINet cannot override the local proxy.
+    await Process.run('reg.exe', ['delete', _key, '/v', 'AutoConfigURL', '/f']);
+    await _writeReg('AutoDetect', 'REG_DWORD', '0');
     await _writeReg('ProxyServer', 'REG_SZ', '127.0.0.1:$_port');
     await _writeReg('ProxyOverride', 'REG_SZ', '<local>;localhost;127.*');
     await _writeReg('ProxyEnable', 'REG_DWORD', '1');
@@ -425,7 +469,7 @@ Add-Type -TypeDefinition $src
     if (!await backup.exists()) return;
     final raw = jsonDecode(await backup.readAsString());
     if (raw is Map) {
-      for (final name in ['ProxyEnable','ProxyServer','ProxyOverride']) {
+      for (final name in ['ProxyEnable','ProxyServer','ProxyOverride','AutoConfigURL','AutoDetect']) {
         final v = raw[name];
         if (v is Map && v['type'] is String && v['data'] is String) {
           await _writeReg(name, v['type'] as String, v['data'] as String);
