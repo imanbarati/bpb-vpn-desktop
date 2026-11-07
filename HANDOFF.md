@@ -225,3 +225,19 @@ The owner requested feature work based on these projects:
 
 - 2026-11-07 — Reviewed MTU-Finder, INCY Iran routing, thefeed, and behradNG. Added an independent Windows/Dart path-MTU diagnostic page with DF binary search, stability/packet-loss checks, benchmark, safety margin, JSON copy/save, and a Settings entry. Added a one-tap Iran routing preset using only the Xray geo tags and rule presets already supported by this app. No Windows build/test or real-machine probe has yet been verified for these new commits.
 - 2026-11-07 — Deliberately did not merge thefeed's independent DNS-feed/messenger product or behradNG's Android-native Aether/custom Saturn transport. TheFeed is not an Xray transport; Aether is Android-native and AGPL-3.0-only; Saturn needs a separate protocol and cryptographic audit plus a Windows implementation. These boundaries and next-agent tasks are documented above.
+
+
+### Current-state correction — 2026-11-07 (supersedes stale planning text above)
+
+The repository's active work is on the default `main` branch. The old sentence saying the Windows work is only on `windows-port/ci-foundation` / draft PR #1 is historical planning text, not the current delivery state. The regular Windows release workflow has already completed successfully on the preceding Windows lifecycle revision (run [42369310795](https://github.com/imanbarati/bpb-vpn-desktop/actions/runs/42369310795)); that run predates the MTU Finder and Iran preset commits below.
+
+The latest feature commits pushed to `main` are:
+- `25bc0277612a304c623e0a83f2b859549c9a5b1d` — Windows MTU diagnostic service.
+- `c753178141ace097ff78a5c27ab6975b67de257b` — MTU Finder page.
+- `729a6e551511995bb3799eda67669eaa15395295` — Settings entry points and Iran routing preset.
+- `2107d90108796cfd7c1de80aaf30536b8ff31412` — async timeout import.
+- `b88e3be6c409901e810a37f1a43dc3fd619aed84` — stable Material icons.
+- `f814e7b75c3000ea66cae3bd8f2dc39352a10f23` — external project review and this handoff section.
+- `8a284d5a5309d012f26881eabfc9cfcae319b712` — README feature status.
+
+Latest known `main` HEAD at the time of this handoff update: `8a284d5a5309d012f26881eabfc9cfcae319b712`. The GitHub Actions run for this exact HEAD has **not been verified here**. The previous green run does not validate the new MTU UI/service or Iran preset. First task for the next agent: inspect the latest `windows-release.yml` run for HEAD, fix any Dart analyzer/test/build failure, and verify that the workflow publishes a regular release with the ZIP and checksum.
