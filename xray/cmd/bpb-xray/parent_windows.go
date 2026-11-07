@@ -68,8 +68,8 @@ public static class BpbWinInet {
 }
 "@
 Add-Type -TypeDefinition $src
-[BpbWinInet]::InternetSetOption([IntPtr]::Zero,39,[IntPtr]::Zero,0) | Out-Null
-[BpbWinInet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0) | Out-Null
+if (-not [BpbWinInet]::InternetSetOption([IntPtr]::Zero,39,[IntPtr]::Zero,0)) { throw 'INTERNET_OPTION_SETTINGS_CHANGED failed' }
+if (-not [BpbWinInet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0)) { throw 'INTERNET_OPTION_REFRESH failed' }
 `
 	if output, err := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", refresh).CombinedOutput(); err != nil {
 		return fmt.Errorf("refresh WinINet settings: %w: %s", err, output)
