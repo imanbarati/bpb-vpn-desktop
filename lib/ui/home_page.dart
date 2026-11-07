@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -36,13 +38,19 @@ class HomePage extends StatelessWidget {
         ),
         actions: [
           // VPN: the whole device; Proxy: only apps set to use the local SOCKS/HTTP proxy.
-          ChipMenu(
-            values: AppMode.values,
-            selected: state.device.appMode,
-            label: (v) => v == AppMode.proxy ? 'Proxy mode' : 'VPN mode',
-            onSelected: state.setAppMode,
-            enabled: !state.isBusy,
-          ),
+          if (Platform.isWindows)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('Proxy mode', style: TextStyle(fontWeight: FontWeight.w600)),
+            )
+          else
+            ChipMenu(
+              values: AppMode.values,
+              selected: state.device.appMode,
+              label: (v) => v == AppMode.proxy ? 'Proxy mode' : 'VPN mode',
+              onSelected: state.setAppMode,
+              enabled: !state.isBusy,
+            ),
           const SizedBox(width: 4),
           IconButton(
             tooltip: 'Logs',
