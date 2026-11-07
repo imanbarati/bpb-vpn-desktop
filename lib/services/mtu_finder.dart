@@ -120,7 +120,7 @@ class MtuFinder {
   /// Parses and validates the IPv4 target list without performing network I/O.
   static List<String> parseTargets(String raw) {
     final targets = raw
-        .split(RegExp(r'[,\\s]+'))
+        .split(RegExp(r'[,\s]+'))
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toSet()
