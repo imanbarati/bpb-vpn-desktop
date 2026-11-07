@@ -314,6 +314,17 @@ class AppState extends ChangeNotifier {
       if (windowsDevice.workerVariant == 'browserDialer') {
         windowsDevice = windowsDevice.updated('connection.workerVariant', 'normal');
       }
+      if (windowsDevice.serverlessMode == 'domainFronting') {
+        windowsDevice = windowsDevice.updated('connection.serverlessMode', 'fragment');
+      }
+      if (windowsDevice.lanSharing) {
+        windowsDevice = windowsDevice.updated('lanSharing.enabled', false);
+      }
+      if (windowsDevice.perAppMode != PerAppMode.off || windowsDevice.perAppApps.isNotEmpty) {
+        windowsDevice = windowsDevice
+            .updated('perAppProxy.mode', PerAppMode.off.name)
+            .updated('perAppProxy.apps', <String>[]);
+      }
       if (windowsDevice.exitNode == ExitNode.psiphon || windowsDevice.exitNode == ExitNode.tor) {
         windowsDevice = windowsDevice.updated('exit.node', ExitNode.worker.name);
       }
