@@ -423,6 +423,15 @@ class _WindowsVpnBackend {
     return values;
   }
 
+  static Future<void> _deleteRegIfPresent(String name) async {
+    final result = await Process.run('reg.exe', ['delete', _key, '/v', name, '/f']);
+    if (result.exitCode == 0) return;
+    final check = await Process.run('reg.exe', ['query', _key, '/v', name]);
+    if (check.exitCode == 0) {
+      throw StateError('Unable to remove Windows proxy setting $name: ${result.stderr}');
+    }
+  }
+
   static Future<void> _writeReg(String name, String type, String data) async {
     final r = await Process.run('reg.exe', ['add', _key, '/v', name, '/t', type, '/d', data, '/f']);
     if (r.exitCode != 0) throw StateError('Unable to change Windows proxy setting $name: ${r.stderr}');
@@ -459,7 +468,7 @@ if (-not [BpbWinInet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0)) { 
       await session.writeAsString(jsonEncode({'pid': process.pid}), flush: true);
     }
     // Disable PAC and automatic discovery so WinINet cannot override the local proxy.
-    await Process.run('reg.exe', ['delete', _key, '/v', 'AutoConfigURL', '/f']);
+    await _deleteRegIfPresent('AutoConfigURL');
     await _writeReg('AutoDetect', 'REG_DWORD', '0');
     await _writeReg('ProxyServer', 'REG_SZ', '127.0.0.1:$_port');
     await _writeReg('ProxyOverride', 'REG_SZ', '<local>;localhost;127.*');
@@ -478,7 +487,7 @@ if (-not [BpbWinInet]::InternetSetOption([IntPtr]::Zero,37,[IntPtr]::Zero,0)) { 
         if (v is Map && v['type'] is String && v['data'] is String) {
           await _writeReg(name, v['type'] as String, v['data'] as String);
         } else {
-          await Process.run('reg.exe', ['delete', _key, '/v', name, '/f']);
+          await _deleteRegIfPresent(name);
         }
       }
       await _refresh();
