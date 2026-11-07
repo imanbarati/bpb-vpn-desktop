@@ -47,7 +47,7 @@ func restoreProxyBackup(path string) error {
 	if err := json.Unmarshal(data, &values); err != nil {
 		return fmt.Errorf("decode proxy backup: %w", err)
 	}
-	for _, name := range []string{"ProxyEnable", "ProxyServer", "ProxyOverride"} {
+	for _, name := range []string{"ProxyEnable", "ProxyServer", "ProxyOverride", "AutoConfigURL", "AutoDetect"} {
 		value, ok := values[name]
 		var command *exec.Cmd
 		if ok && value.Type != "" {
