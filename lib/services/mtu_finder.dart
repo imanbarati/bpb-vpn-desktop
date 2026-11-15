@@ -170,8 +170,11 @@ class MtuFinder {
         detected,
       );
       final best = benchmarkReport['best'] as Map<String, dynamic>?;
-      if (best != null) suggested = suggested < (best['mtu'] as int) - margin
-          ? suggested : ((best['mtu'] as int) - margin).clamp(576, 1500);
+      if (best != null) {
+        suggested = suggested < (best['mtu'] as int) - margin
+            ? suggested
+            : ((best['mtu'] as int) - margin).clamp(576, 1500);
+      }
     }
     return {
       'version': '1.1.0',

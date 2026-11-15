@@ -99,7 +99,7 @@ void main() {
       expect(breaker.currentCooldown, const Duration(minutes: 2));
 
       for (var i = 0; i < 20; i++) {
-        breaker.recordFailure(start.add(const Duration(minutes: 3 + i)));
+        breaker.recordFailure(start.add(Duration(minutes: 3 + i)));
       }
       expect(breaker.currentCooldown, const Duration(hours: 6));
     });

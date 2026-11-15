@@ -100,20 +100,20 @@ class FluxRouteScorer {
     final median = _percentile(samples, 0.50);
     final p95 = _percentile(samples, 0.95);
 
-    final latency = median == null ? 0 : _clamp(100 / (1 + median / 100));
+    final latency = median == null ? 0.0 : _clamp(100 / (1 + median / 100));
     final success = metrics.successEwma * 100;
     final stability = median == null || p95 == null
-        ? 0
+        ? 0.0
         : _clamp(median / p95) * 100;
     final throughput = metrics.throughputMbps == null
-        ? 0
+        ? 0.0
         : _clamp(math.log(1 + math.max(0, metrics.throughputMbps!)) / math.log(101)) * 100;
     final age = metrics.lastVerifiedAt == null
         ? freshnessWindow.inSeconds.toDouble()
         : math.max(0, now.difference(metrics.lastVerifiedAt!).inSeconds).toDouble();
     final freshness = _clamp(1 - age / freshnessWindow.inSeconds) * 100;
     final handshake = metrics.handshakeMs == null
-        ? 0
+        ? 0.0
         : _clamp(100 / (1 + math.max(0, metrics.handshakeMs!) / 100));
 
     final penalties = metrics.consecutiveFailures * 12.0 +

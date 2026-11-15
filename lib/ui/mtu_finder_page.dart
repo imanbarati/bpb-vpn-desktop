@@ -40,9 +40,11 @@ class _MtuFinderPageState extends State<MtuFinderPage> {
     final report = _report;
     if (report == null) return;
     await Clipboard.setData(ClipboardData(text: MtuFinder.encodeReport(report)));
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('MTU report copied as JSON.')),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('MTU report copied as JSON.')),
+      );
+    }
   }
 
   Future<void> _save() async {
@@ -54,9 +56,11 @@ class _MtuFinderPageState extends State<MtuFinderPage> {
       await dir.create(recursive: true);
       final file = File('${dir.path}\\mtu_result.json');
       await file.writeAsString(MtuFinder.encodeReport(report));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved: ${file.path}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Saved: ${file.path}')),
+        );
+      }
     } catch (e) {
       if (mounted) setState(() => _error = 'Could not save report: $e');
     }
